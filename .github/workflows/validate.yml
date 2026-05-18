@@ -1,0 +1,48 @@
+name: Validate Distribution Config
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install pandas python-dotenv
+
+      - name: Validate CSV structure
+        run: python3 scripts/validate_csv.py --csv data/client_distribution.csv
+
+      - name: Dry-run provisioning
+        run: |
+          cp config/.env.template config/.env
+          # Replace placeholders with dummy values for CI
+          sed -i 's/CHANGE_THIS_STRONG_DB_PASS!/ci_db_pass/g'    config/.env
+          sed -i 's/CHANGE_THIS_ROOT_PASS!/ci_root_pass/g'       config/.env
+          sed -i 's/CHANGE_THIS_ADMIN_PASS!/ci_admin_pass/g'     config/.env
+          sed -i 's/your-domain.com/ci.example.com/g'            config/.env
+          sed -i 's/your-email@example.com/ci@example.com/g'     config/.env
+          python3 scripts/provision_clients.py \
+              --env config/.env \
+              --csv data/client_distribution.csv \
+              --dry-run --report
+
+      - name: Check .env.template has no real secrets
+        run: |
+          if grep -E "(CHANGE_THIS|your-domain|your-email)" config/.env.template; then
+            echo "✅ Template still contains placeholders — good"
+          fi
+          if git ls-files | grep -q "config/.env$"; then
+            echo "❌ ERROR: config/.env should NOT be tracked by git!"
+            exit 1
+          fi

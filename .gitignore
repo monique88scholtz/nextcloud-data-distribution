@@ -1,0 +1,27 @@
+# ── NEVER commit these ────────────────────────────────────────
+config/.env
+*.env
+!config/.env.template
+
+# ── Data files (may contain client info) ──────────────────────
+# Comment out if you WANT to track CSV in git
+# data/*.csv
+
+# ── Python ────────────────────────────────────────────────────
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# ── OS junk ───────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Editor ────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
