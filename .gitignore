@@ -1,0 +1,43 @@
+# ── Secrets — NEVER commit these ─────────────────────────────
+config/.env
+.env
+*.env
+!config/.env.template
+!scripts/folders.env.template
+
+# ── Python ────────────────────────────────────────────────────
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+
+# ── Logs ──────────────────────────────────────────────────────
+logs/
+*.log
+
+# ── Backups ───────────────────────────────────────────────────
+backups/
+
+# ── Data — CSV has client info, keep out of public repos ──────
+# Comment out if you want to track CSVs in a private repo
+# data/*.csv
+
+# ── OS junk ───────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Editor ────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ── Generated Mapflow configs ─────────────────────────────────
+quarterly/*/
+!quarterly/*.yaml
+scripts/auto_*.yaml
+configs/auto_*.yaml

@@ -1,0 +1,63 @@
+name: Validate Pipeline
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install pandas python-dotenv pyyaml
+
+      - name: Validate CSV structure
+        run: python3 scripts/validate_csv.py --csv data/client_distribution.csv
+
+      - name: Validate quarterly config
+        run: |
+          python3 -c "
+          import yaml, sys
+          for f in ['quarterly/Q2_2026.yaml']:
+              with open(f) as fh:
+                  cfg = yaml.safe_load(fh)
+              required = ['quarter','tomtom_version','distro_folder','datasets','clients']
+              missing = [k for k in required if k not in cfg]
+              if missing:
+                  print(f'FAIL {f}: missing keys {missing}')
+                  sys.exit(1)
+              print(f'OK {f}')
+          "
+
+      - name: Dry-run provisioning
+        run: |
+          cp config/.env.template config/.env
+          sed -i 's/CHANGE_THIS_STRONG_DB_PASS!/ci_db_pass/g'  config/.env
+          sed -i 's/CHANGE_THIS_ROOT_PASS!/ci_root_pass/g'      config/.env
+          sed -i 's/CHANGE_THIS_ADMIN_PASS!/ci_admin_pass/g'    config/.env
+          sed -i 's/your-domain.com/ci.example.com/g'           config/.env
+          sed -i 's/your-email@example.com/ci@example.com/g'    config/.env
+          python3 scripts/provision_clients.py \
+              --env config/.env \
+              --csv data/client_distribution.csv \
+              --dry-run --report
+
+      - name: Check no secrets in tracked files
+        run: |
+          if git ls-files | xargs grep -l "CHANGE_THIS" 2>/dev/null | grep -v ".template\|README\|runbook"; then
+            echo "WARNING: placeholder text found in tracked files"
+          fi
+          if git ls-files | grep -q "config/.env$"; then
+            echo "ERROR: config/.env should NOT be tracked!"
+            exit 1
+          fi
+          echo "Secret check passed"

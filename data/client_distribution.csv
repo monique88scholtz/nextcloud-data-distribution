@@ -1,0 +1,61 @@
+CLIENT,PASSWORD,DATA,GROUP,DirectoryPath
+3D_Tracking,4f0a8a9f-ed92-41d8-a17f-400905d2b26f,"MN FIN,",mn_3D_tracking,/mnt/data/DISTRIBUTION_Q1_2026/MN/MN_3D_TRACKING/MN_DATA/fin
+3D_Tracking,,PREMIUM POI ZAF,premium_poi_zaf,/mnt/data/DISTRIBUTION_Q1_2026/PRODUCTS/MN_PREMIUM_POI/MN_PREMIUM_POI_ZAF
+3D_Tracking,,MN Documentation,mn_documentation_tools,/mnt/data/DISTRIBUTION_Q1_2026/MN/MN_DOCUMENTATION/MN_DOCUMENTATION_EUR
+3D_Tracking,,MN ZAF,mn_3D_tracking,/mnt/data/DISTRIBUTION_Q1_2026/MN/MN_MEA/zaf
+3D_Tracking,,MN NOR,mn_3D_tracking,/mnt/data/DISTRIBUTION_Q1_2026/MN/MN_3D_TRACKING/MN_DATA/nor
+3D_Tracking,,MN SWE,mn_3D_tracking,/mnt/data/DISTRIBUTION_Q1_2026/MN/MN_3D_TRACKING/MN_DATA/swe
+3D_Tracking,,MN IRL,mn_3D_tracking,/mnt/data/DISTRIBUTION_Q1_2026/MN/MN_3D_TRACKING/MN_DATA/irl
+3D_Tracking,,MN GBR,mn_3D_tracking,/mnt/data/DISTRIBUTION_Q1_2026/MN/MN_3D_TRACKING/MN_DATA/gbr
+,,,,
+VSC_Solutions,27b156f9-405b-4475-b0d0-0e98af6ac279,MN-R AFR,mnr_afr,/mnt/data/DISTRIBUTION_Q1_2026/MNR/MNR_MEA
+VSC_Solutions,,MN-R EUR,mnr_eur,/mnt/data/DISTRIBUTION_Q1_2026/MNR/MNR_EUR
+VSC_Solutions,,MN-R Documentation eur,mnr_documentation_tools,mnt/data/DISTRIBUTION_Q1_2026/MNR/MNR_DOCUMENTATION/MNR_DOCUMENTATION_EUR
+VSC_Solutions,,MN-R Documentation afr,mnr_documentation_tools,/mnt/data/DISTRIBUTION_Q1_2026/MNR/MNR_DOCUMENTATION/MNR_DOCUMENTATION_MEA
+VSC_Solutions,,Speed_Profiles AFR,speed_afr,/mnt/data/DISTRIBUTION_Q1_2026/PRODUCTS/SPEED_PROFILES/SPEED_PROFILE_MEA
+VSC_Solutions,,Speed_Profiles EUR,speed_eur,/mnt/data/DISTRIBUTION_Q1_2026/PRODUCTS/SPEED_PROFILES/SPEED_PROFILE_EUR
+VSC_Solutions,,Speed_Profiles Documentation,speed_documentation_tools,/mnt/data/DISTRIBUTION_Q1_2026/PRODUCTS/SPEED_PROFILES/SPEED_PROFILES_DOCUMENTATION/SP_DOCUMENTATION_EUR
+,,,,
+Altrack,d4de62be-3bd9-4c75-a8e4-765c608456ff,MN-R Southern Africa,mnr_southern_africa,/mnt/data/DISTRIBUTION_Q1_2026/MNR/MNR_SOUTHERN_AFRICA
+Altrack,,MN-R Documentation,mnr_documentation_tools,/mnt/data/DISTRIBUTION_Q1_2026/MNR/MNR_DOCUMENTATION/MNR_DOCUMENTATION_MEA
+Altrack,,PREMIUM POI Southern Africa,premium_poi_southern_africa,/mnt/data/DISTRIBUTION_Q1_2026/PRODUCTS/MN_PREMIUM_POI/MN_PREMIUM_POI_SOUTHERN_AFRICA
+Altrack,,PREMIUM POI Documentation,premium_poi_southern_africa_documentation,/mnt/data/DISTRIBUTION_Q1_2026/PRODUCTS/MN_PREMIUM_POI/MN_POI_DOCUMENTATION/MN_POI_DOCUMENTATION_MEA
+,,,,
+Cellstop,8075766d-5df1-46c6-86d5-7c5b1df3a560,MN-R Africa,mnr_afr,/mnt/data/DISTRIBUTION_Q1_2026/MNR/MNR_MEA
+Cellstop,,MN-R Documentation,mnr_documentation_tools,/mnt/data/DISTRIBUTION_Q1_2026/MNR/MNR_DOCUMENTATION/MNR_DOCUMENTATION_MEA
+Cellstop,,PREMIUM POI AFR,premium_poi_afr,/mnt/data/DISTRIBUTION_Q1_2026/PRODUCTS/MN_PREMIUM_POI/MN_PREMIUM_POI_MEA
+Cellstop,,PREMIUM POI Documentation,premium_poi_afr_documentation,/mnt/data/DISTRIBUTION_Q1_2026/PRODUCTS/MN_PREMIUM_POI/MN_POI_DOCUMENTATION/MN_POI_DOCUMENTATION_MEA
+,,,,
+Esri,2c55a24e-bdcd-498a-afd3-91460abf676b,MN-R AFR,mnr_afr,/mnt/data/DISTRIBUTION_Q1_2026/MNR/MNR_MEA
+Esri,,MN AFR,mn_afr,/mnt/data/DISTRIBUTION_Q1_2026/MN/MN_AFR
+Esri,,MapIT – Africa,mapit_afr,/mnt/data/DISTRIBUTION_Q1_2026/MAPIT/SQLAfrica
+Esri,,MN Documentation,mn_documentation_tools,/mnt/data/DISTRIBUTION_Q1_2026/MN/MN_DOCUMENTATION
+Esri,,MN-R Documentation,mnr_documentation_tools,/mnt/data/DISTRIBUTION_Q1_2026/MNR/MNR_DOCUMENTATION/MNR_DOCUMENTATION_MEA
+Esri,,PREMIUM POI AFR,premium_poi_afr,/mnt/data/DISTRIBUTION_Q1_2026/PRODUCTS/MN_PREMIUM_POI/MN_PREMIUM_POI_MEA
+Esri,,PREMIUM POI Documentation,premium_poi_afr_documentation,/mnt/data/DISTRIBUTION_Q1_2026/PRODUCTS/MN_PREMIUM_POI/MN_POI_DOCUMENTATION/MN_POI_DOCUMENTATION_MEA
+Esri,,Speed_Profiles AFR,speed profiles afr,/mnt/data/DISTRIBUTION_Q1_2026/PRODUCTS/SPEED_PROFILES/SPEED_PROFILES_MEA
+Esri,,Speed_Profiles_Documentation,speed_profiles_documentation,/mnt/data/DISTRIBUTION_Q1_2026/PRODUCTS/SPEED_PROFILES/SPEED_PROFILES_DOCUMENTATION/SPEED_PROFILES_DOCUMENTATION_MEA
+Esri,,,,
+Esri,,,,
+,,,,
+Prosource,c5518918-273e-43cc-bd25-e59650b3c18f,MN-R ZAF,mnr_zaf,/mnt/data/DISTRIBUTION_Q1_2026/MNR/MNR_ZAF
+Prosource,,MN-R Documentation,mnr_documentation_tools,/mnt/data/DISTRIBUTION_Q1_2026/MNR/MNR_DOCUMENTATION/MNR_DOCUMENTATION_MEA
+Prosource,,PREMIUM POI ZAF,premium_poi_zaf,/mnt/data/DISTRIBUTION_Q1_2026/PRODUCTS/MN_PREMIUM_POI/MN_PREMIUM_POI_ZAF
+,,,,
+,,,,
+,,,,
+Sysman,be301993-1069-4c55-8639-681c2f54e0d3,MN-R Southern Africa,mnr_southern_africa,/mnt/data/DISTRIBUTION_Q1_2026/MNR/MNR_SOUTHERN_AFRICA
+Sysman,,MN-R Documentation,mnr_documentation_tools,/mnt/data/DISTRIBUTION_Q1_2026/MNR/MNR_DOCUMENTATION/MNR_DOCUMENTATION_MEA
+Sysman,,PREMIUM POI Southern Africa,premium_poi_southern_africa,/mnt/data/DISTRIBUTION_Q1_2026/PRODUCTS/MN_PREMIUM_POI/MN_PREMIUM_POI_SOUTHERN_AFRICA
+,,,,
+,,,,
+Trackmatic,27e89ec3-e46a-4a64-9d92-c37c42c021fe,MN-R Southern Africa,mnr_southern_africa,/mnt/data/DISTRIBUTION_Q1_2026/MNR/MNR_SOUTHERN_AFRICA
+Trackmatic,,MN-R Documentation,mnr_documentation_tools,/mnt/data/DISTRIBUTION_Q1_2026/MNR/MNR_DOCUMENTATION/MNR_DOCUMENTATION_MEA
+Trackmatic,,PREMIUM POI Southern Africa,premium_poi_southern_africa,/mnt/data/DISTRIBUTION_Q1_2026/PRODUCTS/MN_PREMIUM_POI/MN_PREMIUM_POI_SOUTHERN_AFRICA
+,,,,
+,,,,
+,,,,
+Knowledge_Factory,a6bb300f-94ba-46b8-srfa-4swd3pzfec38,MAPIT_ZAF,mapit_zaf_sql,/mnt/data/DISTRIBUTION_Q1_2026/MAPIT/MAPIT_ZAF
+,,,,
+,,,,
+Lightstone,a6bb300f-94ba-46b8-srfa-4swd3pzfec38,MAPIT_ZAF,mapit_zaf_sql,/mnt/data/DISTRIBUTION_Q1_2026/MAPIT/MAPIT_ZAF

@@ -1,0 +1,146 @@
+# =============================================================
+#  quarterly/Q2_2026.yaml
+#  MASTER QUARTERLY CONFIGURATION
+#  ─────────────────────────────────────────────────────────────
+#  This file defines:
+#    1. The TomTom version to download this quarter
+#    2. Which datasets to download
+#    3. Which clients get which datasets
+#    4. Where data lands on disk
+#
+#  Run the full pipeline with:
+#    sudo bash master_pipeline.sh --quarter Q2_2026 --dry-run
+#    sudo bash master_pipeline.sh --quarter Q2_2026
+# =============================================================
+
+quarter: Q2_2026
+tomtom_version: "2026.06.003"
+distro_folder: /mnt/data/DISTRIBUTION_Q2_2026
+downloads_folder: /mnt/data/downloads
+
+# ── Datasets to download from TomTom ─────────────────────────
+# Each entry generates a Mapflow YAML config and runs the download.
+# Key format matches .folders.env: MNR_MEA, MN_EUR, SP_MEA etc.
+datasets:
+
+  MNR_MEA:
+    family: MNR
+    region: MEA
+    zones: ~ALL          # ~ALL = every country, or list e.g. [ZAF, LSO, NAM]
+    mnr_data: [ALL]      # ALL layers, or list e.g. [core, apt, speed_profiles]
+
+  MNR_EUR:
+    family: MNR
+    region: EUR
+    zones: ~ALL
+    mnr_data: [ALL]
+
+  MNR_SOUTHERN_AFRICA:
+    family: MNR
+    region: MEA
+    zones: [AGO, BWA, LSO, MOZ, MWI, NAM, SWZ, ZAF, ZMB, ZWE]
+    mnr_data: [ALL]
+
+  MNR_ZAF:
+    family: MNR
+    region: MEA
+    zones: [ZAF]
+    mnr_data: [ALL]
+
+  MN_MEA:
+    family: MN
+    region: MEA
+    zones: ~ALL
+
+  MN_EUR:
+    family: MN
+    region: EUR
+    zones: ~ALL
+
+  SP_MEA:
+    family: MNSP
+    region: MEA
+    zones: ~ALL
+
+  SP_EUR:
+    family: MNSP
+    region: EUR
+    zones: ~ALL
+
+  POI_MEA:
+    family: MNPOI
+    region: MEA
+    zones: ~ALL
+
+  APT_MEA:
+    family: MNAP
+    region: MEA
+    zones: ~ALL
+
+# ── Client access mapping ─────────────────────────────────────
+# Maps each client to their datasets AND their Nextcloud username.
+# This drives both the download selection AND the CSV generation.
+clients:
+
+  3D_Tracking:
+    username: 3d_tracking
+    datasets:
+      - MN_MEA        # ZAF country only in practice - filtered by zones above
+      - POI_MEA
+
+  VSC_Solutions:
+    username: vsc_solutions
+    datasets:
+      - MNR_MEA
+      - MNR_EUR
+      - SP_MEA
+      - SP_EUR
+
+  Altrack:
+    username: altrack
+    datasets:
+      - MNR_SOUTHERN_AFRICA
+      - POI_MEA
+
+  Cellstop:
+    username: cellstop
+    datasets:
+      - MNR_MEA
+      - POI_MEA
+
+  Esri:
+    username: esri
+    datasets:
+      - MNR_MEA
+      - MNR_EUR
+      - MN_MEA
+      - POI_MEA
+      - SP_MEA
+
+  Prosource:
+    username: prosource
+    datasets:
+      - MNR_ZAF
+      - POI_MEA
+
+  Sysman:
+    username: sysman
+    datasets:
+      - MNR_SOUTHERN_AFRICA
+      - POI_MEA
+
+  Trackmatic:
+    username: trackmatic
+    datasets:
+      - MNR_SOUTHERN_AFRICA
+      - POI_MEA
+
+  Knowledge_Factory:
+    username: knowledge_factory
+    datasets:
+      - MNR_ZAF
+
+  Lightstone:
+    username: lightstone
+    datasets:
+      - MNR_ZAF
