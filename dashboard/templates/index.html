@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GeoInt Distribution Dashboard</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f2;color:#1a1a1a;font-size:14px}
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:216px;background:#fff;border-right:1px solid #e8e8e4;display:flex;flex-direction:column;z-index:10}
+.logo{padding:18px 20px 14px;border-bottom:1px solid #e8e8e4}
+.logo h1{font-size:15px;font-weight:600}
+.logo p{font-size:11px;color:#999;margin-top:2px}
+.nav{padding:10px 0;flex:1}
+.nav-section{padding:4px 20px 2px;font-size:10px;font-weight:600;color:#bbb;text-transform:uppercase;letter-spacing:0.08em;margin-top:8px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:8px 20px;font-size:13px;color:#666;cursor:pointer;border-left:3px solid transparent;transition:all 0.12s}
+.nav-item:hover{background:#f8f8f6;color:#1a1a1a}
+.nav-item.active{background:#f0f7ff;color:#185fa5;border-left-color:#185fa5;font-weight:500}
+.nav-item i{font-size:16px;flex-shrink:0}
+.nav-badge{margin-left:auto;background:#e24b4a;color:#fff;font-size:10px;font-weight:600;padding:1px 6px;border-radius:10px}
+.nav-badge.green{background:#1d9e75}
+.nav-badge.amber{background:#ef9f27}
+.main{margin-left:216px;padding:24px;min-height:100vh}
+.page{display:none}
+.page.active{display:block}
+.page-header{margin-bottom:20px;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.page-header h2{font-size:20px;font-weight:600;margin-bottom:3px}
+.page-header p{color:#888;font-size:13px}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:20px}
+.metric{background:#fff;border:1px solid #e8e8e4;border-radius:10px;padding:14px}
+.metric-label{font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:5px}
+.metric-value{font-size:20px;font-weight:600;line-height:1.2}
+.metric-sub{font-size:11px;color:#888;margin-top:3px}
+.ok .metric-value{color:#0f6e56}
+.warn .metric-value{color:#ba7517}
+.err .metric-value{color:#a32d2d}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px}
+.card{background:#fff;border:1px solid #e8e8e4;border-radius:10px;padding:18px}
+.card-title{font-size:12px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:14px;display:flex;align-items:center;gap:7px}
+.svc-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid #f2f2ef}
+.svc-row:last-child{border-bottom:none}
+.dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.dot.ok{background:#1d9e75}.dot.err{background:#e24b4a}.dot.warn{background:#ef9f27}
+.badge{font-size:11px;padding:2px 8px;border-radius:20px;font-weight:500}
+.badge-ok{background:#e1f5ee;color:#0f6e56}
+.badge-err{background:#fcebeb;color:#a32d2d}
+.badge-warn{background:#faeeda;color:#854f0b}
+.badge-info{background:#e6f1fb;color:#185fa5}
+.badge-pulse{animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
+.quarter-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:20px}
+.quarter-card{background:#fff;border:1px solid #e8e8e4;border-radius:10px;padding:14px;cursor:pointer;transition:border-color 0.15s}
+.quarter-card:hover{border-color:#185fa5}
+.quarter-card.suggested{border:2px solid #185fa5;background:#f0f7ff}
+.quarter-card.empty{border-style:dashed;background:#fafaf8}
+.quarter-card h3{font-size:14px;font-weight:600;margin-bottom:4px}
+.quarter-card p{font-size:12px;color:#888}
+.quarter-pill{font-size:10px;padding:2px 8px;border-radius:20px;font-weight:600;display:inline-block;margin-bottom:6px}
+.qp-exists{background:#e1f5ee;color:#0f6e56}
+.qp-suggested{background:#e6f1fb;color:#185fa5}
+.qp-missing{background:#f1efe8;color:#5f5e5a}
+.download-item{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f2f2ef}
+.download-item:last-child{border-bottom:none}
+.download-info{flex:1;min-width:0}
+.download-name{font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.download-meta{font-size:11px;color:#888;margin-top:1px}
+.progress-wrap{height:4px;background:#f0f0ec;border-radius:2px;margin-top:4px;overflow:hidden}
+.progress-bar{height:100%;background:#185fa5;border-radius:2px;animation:slide 1.5s infinite}
+@keyframes slide{0%{width:20%;margin-left:-20%}100%{width:20%;margin-left:100%}}
+.step-card{background:#fff;border:1px solid #e8e8e4;border-radius:10px;margin-bottom:10px;overflow:hidden}
+.step-header{display:flex;align-items:center;gap:12px;padding:14px 18px;cursor:pointer;user-select:none}
+.step-num{width:30px;height:30px;border-radius:50%;background:#f0f0ec;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:#666;flex-shrink:0}
+.step-num.active-step{background:#185fa5;color:#fff}
+.step-info{flex:1}
+.step-info h3{font-size:14px;font-weight:600;margin-bottom:2px}
+.step-info p{font-size:12px;color:#888}
+.step-body{padding:0 18px 16px 60px;display:none}
+.step-body.open{display:block}
+.form-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.form-row label{font-size:13px;color:#555;min-width:80px}
+select,input[type=text],input[type=password]{height:34px;padding:0 10px;border:1px solid #e0e0dc;border-radius:6px;font-size:13px;background:#fff;color:#1a1a1a;outline:none}
+select:focus,input:focus{border-color:#185fa5;box-shadow:0 0 0 2px #e6f1fb}
+.btn{height:34px;padding:0 14px;border:1px solid #e0e0dc;border-radius:6px;font-size:13px;cursor:pointer;background:#fff;color:#1a1a1a;display:inline-flex;align-items:center;gap:6px;transition:all 0.12s;white-space:nowrap;flex-shrink:0}
+.btn:hover{background:#f5f5f2;border-color:#ccc}
+.btn:active{transform:scale(0.98)}
+.btn-primary{background:#185fa5;color:#fff;border-color:#185fa5}
+.btn-primary:hover{background:#0c447c;border-color:#0c447c}
+.btn-success{background:#0f6e56;color:#fff;border-color:#0f6e56}
+.btn-success:hover{background:#085041}
+.btn-danger{background:#a32d2d;color:#fff;border-color:#a32d2d}
+.btn-sm{height:28px;padding:0 10px;font-size:12px}
+.btn:disabled{opacity:0.45;cursor:not-allowed}
+.note{border-radius:6px;padding:9px 13px;font-size:12px;margin:8px 0;line-height:1.5}
+.note-info{background:#e6f1fb;color:#0c447c}
+.note-warn{background:#faeeda;color:#633806}
+.note-success{background:#e1f5ee;color:#085041}
+.note-danger{background:#fcebeb;color:#791f1f}
+.terminal{background:#1e1e1e;border-radius:8px;padding:12px 14px;font-family:'SF Mono',Menlo,monospace;font-size:11.5px;color:#d4d4d4;min-height:100px;max-height:280px;overflow-y:auto;margin-top:10px;line-height:1.6;white-space:pre-wrap;word-break:break-all}
+.t-ok{color:#4ec9b0}.t-err{color:#f48771}.t-warn{color:#dcdcaa}.t-info{color:#9cdcfe}
+.spinner{display:inline-block;width:13px;height:13px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;animation:spin 0.7s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+.env-editor{display:flex;flex-direction:column;gap:6px;margin-bottom:12px;max-height:400px;overflow-y:auto}
+.env-row{display:flex;align-items:center;gap:8px}
+.env-row.comment{padding:4px 0}
+.env-row .ekey{width:240px;flex-shrink:0;font-family:monospace;font-size:12px}
+.env-row .eval{flex:1;font-family:monospace;font-size:12px}
+.env-row .comment-text{font-size:12px;color:#888;font-family:monospace;flex:1;padding:4px 0}
+.yaml-editor{width:100%;min-height:300px;font-family:monospace;font-size:12px;padding:10px;border:1px solid #e0e0dc;border-radius:6px;resize:vertical;background:#fafaf8}
+.divider{border:none;border-top:1px solid #e8e8e4;margin:16px 0}
+.client-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px}
+.client-card{background:#fff;border:1px solid #e8e8e4;border-radius:8px;padding:12px}
+.avatar{width:34px;height:34px;border-radius:50%;background:#e6f1fb;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#185fa5;margin-bottom:8px}
+.active-banner{background:#e1f5ee;border:1px solid #9fe1cb;border-radius:8px;padding:10px 14px;display:flex;align-items:center;gap:10px;margin-bottom:14px;font-size:13px;color:#0f6e56}
+.inactive-banner{background:#faeeda;border:1px solid #fac775;border-radius:8px;padding:10px 14px;display:flex;align-items:center;gap:10px;margin-bottom:14px;font-size:13px;color:#854f0b}
+.save-bar{display:flex;align-items:center;gap:10px;padding:12px 0 4px}
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="logo">
+    <h1><i class="ti ti-map" style="font-size:17px;vertical-align:-2px;margin-right:6px"></i>GeoInt</h1>
+    <p>Distribution Dashboard</p>
+  </div>
+  <nav class="nav">
+    <div class="nav-section">Overview</div>
+    <div class="nav-item active" onclick="showPage('dashboard',this)"><i class="ti ti-layout-dashboard"></i>Dashboard</div>
+    <div class="nav-item" onclick="showPage('quarters',this)"><i class="ti ti-calendar"></i>Quarters <span class="nav-badge green" id="nb-quarters">—</span></div>
+    <div class="nav-item" onclick="showPage('downloads',this)"><i class="ti ti-download"></i>Downloads <span class="nav-badge amber" id="nb-downloads" style="display:none">Live</span></div>
+    <div class="nav-section">Actions</div>
+    <div class="nav-item" onclick="showPage('pipeline',this)"><i class="ti ti-player-play"></i>Run pipeline</div>
+    <div class="nav-item" onclick="showPage('clients',this)"><i class="ti ti-users"></i>Clients</div>
+    <div class="nav-section">Settings</div>
+    <div class="nav-item" onclick="showPage('config',this)"><i class="ti ti-settings"></i>Configuration</div>
+    <div class="nav-item" onclick="showPage('tools',this)"><i class="ti ti-tool"></i>Tools</div>
+  </nav>
+</div>
+
+<main class="main">
+
+<!-- DASHBOARD -->
+<div id="page-dashboard" class="page active">
+  <div class="page-header">
+    <div><h2>Dashboard</h2><p>Server status at a glance</p></div>
+    <button class="btn" onclick="loadAll()"><i class="ti ti-refresh"></i> Refresh</button>
+  </div>
+  <div class="metrics">
+    <div class="metric" id="m-nc"><div class="metric-label">Nextcloud</div><div class="metric-value">—</div><div class="metric-sub" id="mv-ncver">—</div></div>
+    <div class="metric" id="m-clients"><div class="metric-label">Clients</div><div class="metric-value" id="mv-clients">—</div><div class="metric-sub">active</div></div>
+    <div class="metric" id="m-disk"><div class="metric-label">Disk used</div><div class="metric-value" id="mv-disk">—</div><div class="metric-sub" id="mv-diskfree">—</div></div>
+    <div class="metric" id="m-mapflow"><div class="metric-label">Downloads</div><div class="metric-value" id="mv-mapflow">Idle</div><div class="metric-sub" id="mv-mapflowsub">—</div></div>
+    <div class="metric" id="m-agent"><div class="metric-label">Refresh agent</div><div class="metric-value" id="mv-agent">—</div><div class="metric-sub">file sync</div></div>
+  </div>
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title"><i class="ti ti-server" style="font-size:14px"></i>Services</div>
+      <div id="svc-list"><div style="color:#888;font-size:13px">Loading...</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><i class="ti ti-bolt" style="font-size:14px"></i>Quick actions</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button class="btn" onclick="quickRun('scan','qt')"><i class="ti ti-refresh"></i> Refresh client files</button>
+        <button class="btn" onclick="quickRun('healthcheck','qt')"><i class="ti ti-heart-rate-monitor"></i> Health check</button>
+        <button class="btn" onclick="quickRun('backup','qt')"><i class="ti ti-database"></i> Backup now</button>
+        <button class="btn btn-primary" onclick="showPage('pipeline',document.querySelector('[onclick*=pipeline]'))"><i class="ti ti-player-play"></i> Start delivery pipeline</button>
+      </div>
+    </div>
+  </div>
+  <div class="card" id="qt-wrap" style="display:none">
+    <div class="card-title"><i class="ti ti-terminal" style="font-size:14px"></i>Output</div>
+    <div class="terminal" id="qt"></div>
+  </div>
+</div>
+
+<!-- QUARTERS -->
+<div id="page-quarters" class="page">
+  <div class="page-header">
+    <div><h2>Quarters</h2><p>Existing distribution folder structures and data</p></div>
+    <button class="btn btn-primary" onclick="showCreateStructure()"><i class="ti ti-plus"></i> Create next quarter</button>
+  </div>
+  <div id="quarters-list"></div>
+  <div class="card" id="create-structure-card" style="display:none">
+    <div class="card-title"><i class="ti ti-folder-plus" style="font-size:14px"></i>Create folder structure</div>
+    <div class="form-row">
+      <label>Quarter</label>
+      <input type="text" id="new-quarter-input" placeholder="Q2_2026" style="width:140px">
+      <button class="btn btn-primary" onclick="runCreateStructure()"><i class="ti ti-folder-plus"></i> Create</button>
+      <button class="btn" onclick="document.getElementById('create-structure-card').style.display='none'">Cancel</button>
+    </div>
+    <div class="terminal" id="cs-terminal" style="display:none"></div>
+  </div>
+</div>
+
+<!-- DOWNLOADS -->
+<div id="page-downloads" class="page">
+  <div class="page-header">
+    <div><h2>Downloads</h2><p>Active and recent Mapflow downloads</p></div>
+    <button class="btn" onclick="loadDownloads()"><i class="ti ti-refresh"></i> Refresh</button>
+  </div>
+  <div id="mapflow-status-banner"></div>
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title"><i class="ti ti-folder" style="font-size:14px"></i>Downloaded folders</div>
+      <div id="download-folders">Loading...</div>
+    </div>
+    <div class="card">
+      <div class="card-title"><i class="ti ti-file-text" style="font-size:14px"></i>Recent log files</div>
+      <div id="download-logs">Loading...</div>
+    </div>
+  </div>
+</div>
+
+<!-- PIPELINE -->
+<div id="page-pipeline" class="page">
+  <div class="page-header"><div><h2>Run pipeline</h2><p>Follow steps in order for each new data release</p></div></div>
+
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-title"><i class="ti ti-bolt" style="font-size:14px"></i>Run full pipeline (steps 4–6 only — after downloads complete)</div>
+    <div class="form-row">
+      <label>Quarter</label>
+      <select id="fp-q"></select>
+      <button class="btn btn-primary" onclick="runFullPipeline()"><i class="ti ti-player-play"></i> Run ingest + provision + scan</button>
+    </div>
+    <div class="terminal" id="fp-t" style="display:none"></div>
+  </div>
+
+  <div class="step-card"><div class="step-header" onclick="toggleStep(this)"><div class="step-num active-step">1</div><div class="step-info"><h3>Create folder structure</h3><p>Set up empty folders before downloads start</p></div><i class="ti ti-chevron-down" style="color:#aaa;margin-left:auto"></i></div>
+  <div class="step-body"><div class="form-row"><label>Quarter</label><select id="s1q"></select><button class="btn btn-primary" onclick="pipeRun('create_structure',{quarter:v('s1q')},'s1t')"><i class="ti ti-folder-plus"></i> Create</button></div><div class="terminal" id="s1t" style="display:none"></div></div></div>
+
+  <div class="step-card"><div class="step-header" onclick="toggleStep(this)"><div class="step-num">2</div><div class="step-info"><h3>Download TomTom data</h3><p>Takes 2–8 hours — runs in background</p></div><i class="ti ti-chevron-down" style="color:#aaa;margin-left:auto"></i></div>
+  <div class="step-body"><div class="note note-warn"><i class="ti ti-alert-triangle"></i> Update the version number in download.sh before running.</div><div class="form-row"><label>Product</label><select id="s2fam"><option value="MNR">MNR — MultiNet-R</option><option value="MN">MN — MultiNet</option><option value="MNSP">SP — Speed Profiles</option><option value="MNPOI">POI — Premium POI</option><option value="MNAP">APT — Address Points</option></select><select id="s2q"></select><button class="btn btn-primary" onclick="pipeRun('download',{family:v('s2fam'),quarter:v('s2q')},'s2t')"><i class="ti ti-download"></i> Start download</button></div><div class="terminal" id="s2t" style="display:none"></div></div></div>
+
+  <div class="step-card"><div class="step-header" onclick="toggleStep(this)"><div class="step-num">3</div><div class="step-info"><h3>Download MAPIT</h3><p>From provider SFTP server</p></div><i class="ti ti-chevron-down" style="color:#aaa;margin-left:auto"></i></div>
+  <div class="step-body"><div class="form-row"><label>Quarter</label><select id="s3q"></select><button class="btn btn-primary" onclick="pipeRun('download_mapit',{quarter:v('s3q')},'s3t')"><i class="ti ti-download"></i> Download MAPIT</button></div><div class="terminal" id="s3t" style="display:none"></div></div></div>
+
+  <div class="step-card"><div class="step-header" onclick="toggleStep(this)"><div class="step-num">4</div><div class="step-info"><h3>Organise files (ingest)</h3><p>Copy downloaded files into distribution structure</p></div><i class="ti ti-chevron-down" style="color:#aaa;margin-left:auto"></i></div>
+  <div class="step-body"><div class="note note-info"><i class="ti ti-info-circle"></i> Always preview first — no files are changed in preview mode.</div><div class="form-row"><label>Quarter</label><select id="s4q"></select><button class="btn" onclick="pipeRun('ingest',{dry_run:true,quarter:v('s4q')},'s4t')"><i class="ti ti-eye"></i> Preview</button><button class="btn btn-success" onclick="pipeRun('ingest',{dry_run:false,quarter:v('s4q')},'s4t')"><i class="ti ti-check"></i> Run for real</button></div><div class="terminal" id="s4t" style="display:none"></div></div></div>
+
+  <div class="step-card"><div class="step-header" onclick="toggleStep(this)"><div class="step-num">5</div><div class="step-info"><h3>Update Nextcloud clients</h3><p>Sync user accounts, groups, folder mounts</p></div><i class="ti ti-chevron-down" style="color:#aaa;margin-left:auto"></i></div>
+  <div class="step-body"><div class="form-row"><label>Quarter</label><select id="s5q"></select><button class="btn" onclick="pipeRun('provision',{dry_run:true},'s5t')"><i class="ti ti-eye"></i> Preview</button><button class="btn btn-success" onclick="pipeRun('provision',{dry_run:false},'s5t')"><i class="ti ti-users"></i> Update clients</button></div><div class="terminal" id="s5t" style="display:none"></div></div></div>
+
+  <div class="step-card"><div class="step-header" onclick="toggleStep(this)"><div class="step-num">6</div><div class="step-info"><h3>Notify clients</h3><p>Send personalised emails with login details</p></div><i class="ti ti-chevron-down" style="color:#aaa;margin-left:auto"></i></div>
+  <div class="step-body"><div class="form-row"><label>Quarter</label><select id="s6q"></select><button class="btn" onclick="pipeRun('notify',{dry_run:true,quarter:v('s6q')},'s6t')"><i class="ti ti-eye"></i> Preview</button><button class="btn btn-success" onclick="pipeRun('notify',{dry_run:false,quarter:v('s6q')},'s6t')"><i class="ti ti-mail"></i> Send emails</button></div><div class="terminal" id="s6t" style="display:none"></div></div></div>
+</div>
+
+<!-- CLIENTS -->
+<div id="page-clients" class="page">
+  <div class="page-header"><div><h2>Clients</h2><p>Active Nextcloud accounts</p></div></div>
+  <div class="client-grid" id="client-grid"><div style="color:#888;font-size:13px">Loading...</div></div>
+</div>
+
+<!-- CONFIG -->
+<div id="page-config" class="page">
+  <div class="page-header"><div><h2>Configuration</h2><p>Edit server settings, folder paths, and quarterly configs</p></div></div>
+
+  <div class="grid2" style="margin-bottom:0">
+    <div>
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-title"><i class="ti ti-lock" style="font-size:14px"></i>Server config (.env)</div>
+        <p style="font-size:12px;color:#888;margin-bottom:12px">Nextcloud passwords, SMTP, TomTom token, MAPIT SFTP.</p>
+        <div class="env-editor" id="env-editor">Loading...</div>
+        <div class="save-bar">
+          <button class="btn btn-primary" onclick="saveEnv()"><i class="ti ti-device-floppy"></i> Save</button>
+          <span id="env-save-msg" style="font-size:12px;color:#0f6e56;display:none"><i class="ti ti-check"></i> Saved</span>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-title"><i class="ti ti-folder" style="font-size:14px"></i>Folder paths (.folders.env)</div>
+        <p style="font-size:12px;color:#888;margin-bottom:12px">Maps dataset keys to download folder names. Update each quarter.</p>
+        <div class="env-editor" id="folders-editor">Loading...</div>
+        <div class="save-bar">
+          <button class="btn btn-primary" onclick="saveFolders()"><i class="ti ti-device-floppy"></i> Save</button>
+          <span id="folders-save-msg" style="font-size:12px;color:#0f6e56;display:none"><i class="ti ti-check"></i> Saved</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><i class="ti ti-calendar" style="font-size:14px"></i>Quarterly config</div>
+    <div class="form-row" style="margin-bottom:12px">
+      <label>Quarter</label>
+      <select id="yaml-quarter" onchange="loadYaml()"></select>
+      <button class="btn" onclick="loadYaml()"><i class="ti ti-refresh"></i> Load</button>
+    </div>
+    <textarea class="yaml-editor" id="yaml-editor" placeholder="Select a quarter to edit its config..."></textarea>
+    <div class="save-bar">
+      <button class="btn btn-primary" onclick="saveYaml()"><i class="ti ti-device-floppy"></i> Save YAML</button>
+      <span id="yaml-save-msg" style="font-size:12px;color:#0f6e56;display:none"><i class="ti ti-check"></i> Saved</span>
+    </div>
+  </div>
+</div>
+
+<!-- TOOLS -->
+<div id="page-tools" class="page">
+  <div class="page-header"><div><h2>Tools</h2><p>Maintenance and utilities</p></div></div>
+  <div class="grid2">
+    <div class="card"><div class="card-title"><i class="ti ti-heart-rate-monitor" style="font-size:14px"></i>Health check</div><p style="font-size:13px;color:#888;margin-bottom:12px">Check all services, disk, mounts, firewall.</p><button class="btn btn-primary" onclick="toolRun('healthcheck','t1t')"><i class="ti ti-player-play"></i> Run</button><div class="terminal" id="t1t" style="display:none;margin-top:10px"></div></div>
+    <div class="card"><div class="card-title"><i class="ti ti-database" style="font-size:14px"></i>Backup</div><p style="font-size:13px;color:#888;margin-bottom:12px">Back up Nextcloud database and config. Keeps 30 days.</p><button class="btn btn-primary" onclick="toolRun('backup','t2t')"><i class="ti ti-player-play"></i> Run backup</button><div class="terminal" id="t2t" style="display:none;margin-top:10px"></div></div>
+    <div class="card"><div class="card-title"><i class="ti ti-refresh" style="font-size:14px"></i>Force file scan</div><p style="font-size:13px;color:#888;margin-bottom:12px">Use if clients say they can't see new data.</p><button class="btn btn-primary" onclick="toolRun('scan','t3t')"><i class="ti ti-player-play"></i> Scan all</button><div class="terminal" id="t3t" style="display:none;margin-top:10px"></div></div>
+    <div class="card"><div class="card-title"><i class="ti ti-refresh" style="font-size:14px"></i>Refresh dashboard</div><p style="font-size:13px;color:#888;margin-bottom:12px">Reload all status information.</p><button class="btn btn-primary" onclick="loadAll()"><i class="ti ti-refresh"></i> Refresh now</button></div>
+  </div>
+</div>
+
+</main>
+
+<script>
+const API = '';
+let quarters = [], nextQ = '';
+
+function v(id){ return document.getElementById(id).value; }
+
+function showPage(id, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  if (el) el.classList.add('active');
+  if (id === 'clients') loadClients();
+  if (id === 'config') loadConfig();
+  if (id === 'quarters') loadQuarters();
+  if (id === 'downloads') loadDownloads();
+}
+
+function toggleStep(hdr) {
+  const body = hdr.nextElementSibling;
+  body.classList.toggle('open');
+  const ic = hdr.querySelector('i:last-child');
+  ic.className = body.classList.contains('open') ? 'ti ti-chevron-up' : 'ti ti-chevron-down';
+  ic.style = 'color:#aaa;margin-left:auto';
+}
+
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function colorLine(l) {
+  if (/\[OK\]|✅|complete|Copied|Mounted|done/i.test(l)) return `<span class="t-ok">${esc(l)}</span>`;
+  if (/\[ERROR\]|❌|Error|FAIL/i.test(l)) return `<span class="t-err">${esc(l)}</span>`;
+  if (/\[WARN\]|⚠|Warning|missing|skip/i.test(l)) return `<span class="t-warn">${esc(l)}</span>`;
+  if (/━━━|\[INFO\]|Starting|Running/i.test(l)) return `<span class="t-info">${esc(l)}</span>`;
+  return esc(l);
+}
+
+async function pollJob(jobId, termId) {
+  const term = document.getElementById(termId);
+  term.style.display = 'block';
+  let last = 0;
+  return new Promise(res => {
+    const iv = setInterval(async () => {
+      try {
+        const d = await (await fetch(`/api/job/${jobId}`)).json();
+        if (d.output && d.output.length > last) {
+          d.output.slice(last).forEach(l => { term.innerHTML += colorLine(l) + '\n'; });
+          term.scrollTop = term.scrollHeight;
+          last = d.output.length;
+        }
+        if (d.status === 'done' || d.status === 'error') { clearInterval(iv); res(d.status); }
+      } catch(e) { clearInterval(iv); res('error'); }
+    }, 800);
+  });
+}
+
+async function post(url, body={}) {
+  return (await fetch(url, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})).json();
+}
+
+async function pipeRun(action, body, termId) {
+  document.getElementById(termId).innerHTML = '';
+  const { job_id } = await post(`/api/run/${action}`, body);
+  await pollJob(job_id, termId);
+}
+
+async function quickRun(action, termId) {
+  document.getElementById(termId + '-wrap').style.display = 'block';
+  document.getElementById(termId).innerHTML = '';
+  const { job_id } = await post(`/api/run/${action}`, {});
+  await pollJob(job_id, termId);
+}
+
+async function toolRun(action, termId) {
+  document.getElementById(termId).innerHTML = '';
+  const { job_id } = await post(`/api/run/${action}`, {});
+  await pollJob(job_id, termId);
+}
+
+function fillSelects(quarters) {
+  ['fp-q','s1q','s2q','s3q','s4q','s5q','s6q','yaml-quarter'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const cur = el.value;
+    el.innerHTML = quarters.map(q => `<option value="${q}">${q}</option>`).join('');
+    if (cur && quarters.includes(cur)) el.value = cur;
+  });
+}
+
+async function loadQuarterData() {
+  const d = await (await fetch('/api/quarters')).json();
+  quarters = d.quarters || [];
+  nextQ = d.next || '';
+  document.getElementById('nb-quarters').textContent = quarters.length;
+  fillSelects(quarters);
+  return d;
+}
+
+async function loadStatus() {
+  const s = await (await fetch('/api/status')).json();
+  const svcs = [
+    ['Apache', s.apache2], ['MariaDB', s.mariadb],
+    ['Redis', s.redis_server], ['Nextcloud', s.nextcloud],
+    ['Refresh agent', s.nextcloud_refresh]
+  ];
+  document.getElementById('svc-list').innerHTML = svcs.map(([n, ok]) => `
+    <div class="svc-row">
+      <span style="display:flex;align-items:center;gap:8px;font-size:13px"><div class="dot ${ok?'ok':'err'}"></div>${n}</span>
+      <span class="badge ${ok?'badge-ok':'badge-err'}">${ok?'running':'stopped'}</span>
+    </div>`).join('');
+  const nc = document.getElementById('m-nc');
+  nc.querySelector('.metric-value').textContent = s.nextcloud ? 'Online' : 'Offline';
+  nc.querySelector('.metric-sub').textContent = s.nc_version ? 'v' + s.nc_version : '';
+  nc.className = 'metric ' + (s.nextcloud ? 'ok' : 'err');
+  document.getElementById('mv-clients').textContent = s.client_count || '—';
+  document.getElementById('mv-disk').textContent = s.disk_used || '—';
+  document.getElementById('mv-diskfree').textContent = s.disk_avail ? s.disk_avail + ' free' : '';
+  const ag = document.getElementById('m-agent');
+  ag.querySelector('.metric-value').textContent = s.nextcloud_refresh ? 'Running' : 'Stopped';
+  ag.className = 'metric ' + (s.nextcloud_refresh ? 'ok' : 'warn');
+}
+
+async function loadMapflowStatus() {
+  const d = await (await fetch('/api/mapflow')).json();
+  const mv = document.getElementById('mv-mapflow');
+  const ms = document.getElementById('mv-mapflowsub');
+  const nb = document.getElementById('nb-downloads');
+  if (d.running) {
+    mv.textContent = 'Active';
+    mv.parentElement.className = 'metric warn';
+    ms.textContent = d.processes.length + ' process(es)';
+    nb.style.display = 'inline';
+    nb.textContent = 'Live';
+  } else {
+    mv.textContent = 'Idle';
+    mv.parentElement.className = 'metric';
+    ms.textContent = d.downloads.length + ' folder(s)';
+    nb.style.display = 'none';
+  }
+  return d;
+}
+
+async function loadQuarters() {
+  const d = await loadQuarterData();
+  const det = d.details || {};
+  let html = '<div class="quarter-grid">';
+  quarters.forEach(q => {
+    const info = det[q] || {};
+    html += `<div class="quarter-card" onclick="selectQuarter('${q}')">
+      <span class="quarter-pill qp-exists">Exists</span>
+      <h3>${q}</h3>
+      <p>${info.size || '?'} &middot; ${info.folders || 0} folders</p>
+      <p style="margin-top:4px">${(info.products||[]).join(', ')}</p>
+    </div>`;
+  });
+  if (nextQ) {
+    html += `<div class="quarter-card suggested" onclick="document.getElementById('new-quarter-input').value='${nextQ}';showCreateStructure()">
+      <span class="quarter-pill qp-suggested">Suggested next</span>
+      <h3>${nextQ}</h3>
+      <p>Click to create folder structure</p>
+    </div>`;
+  }
+  html += '</div>';
+  document.getElementById('quarters-list').innerHTML = html;
+}
+
+function showCreateStructure() {
+  const card = document.getElementById('create-structure-card');
+  card.style.display = 'block';
+  if (nextQ && !document.getElementById('new-quarter-input').value) {
+    document.getElementById('new-quarter-input').value = nextQ;
+  }
+}
+
+async function runCreateStructure() {
+  const q = document.getElementById('new-quarter-input').value.trim();
+  if (!q) return alert('Enter a quarter name like Q2_2026');
+  document.getElementById('cs-terminal').innerHTML = '';
+  const { job_id } = await post('/api/run/create_structure', { quarter: q });
+  await pollJob(job_id, 'cs-terminal');
+  await loadQuarters();
+}
+
+async function loadDownloads() {
+  const d = await loadMapflowStatus();
+  const banner = document.getElementById('mapflow-status-banner');
+  if (d.running) {
+    banner.innerHTML = `<div class="active-banner"><span class="spinner"></span> Mapflow is currently downloading — ${d.processes.length} process(es) running</div>`;
+  } else {
+    banner.innerHTML = `<div class="inactive-banner"><i class="ti ti-info-circle"></i> No active downloads right now</div>`;
+  }
+  const foldersEl = document.getElementById('download-folders');
+  if (d.downloads.length) {
+    foldersEl.innerHTML = d.downloads.map(dl => `
+      <div class="download-item">
+        <i class="ti ti-folder" style="font-size:16px;color:${dl.active?'#185fa5':'#aaa'}"></i>
+        <div class="download-info">
+          <div class="download-name">${esc(dl.name)}</div>
+          <div class="download-meta">${dl.size} &middot; ${dl.age_mins < 60 ? dl.age_mins + 'm ago' : Math.round(dl.age_mins/60) + 'h ago'}</div>
+          ${dl.active ? '<div class="progress-wrap"><div class="progress-bar"></div></div>' : ''}
+        </div>
+        ${dl.active ? '<span class="badge badge-info badge-pulse">Active</span>' : ''}
+      </div>`).join('');
+  } else {
+    foldersEl.innerHTML = '<p style="color:#888;font-size:13px">No download folders found</p>';
+  }
+  const logsEl = document.getElementById('download-logs');
+  if (d.recent_logs.length) {
+    logsEl.innerHTML = d.recent_logs.map(log => `
+      <div class="download-item">
+        <i class="ti ti-file-text" style="font-size:16px;color:${log.active?'#185fa5':'#aaa'}"></i>
+        <div class="download-info">
+          <div class="download-name">${esc(log.name)}</div>
+          <div class="download-meta">${log.age_mins < 60 ? log.age_mins + 'm ago' : Math.round(log.age_mins/60) + 'h ago'}</div>
+          ${log.active && log.last_lines.length ? `<div style="font-family:monospace;font-size:10px;color:#888;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(log.last_lines[log.last_lines.length-1])}</div>` : ''}
+        </div>
+        ${log.active ? '<span class="badge badge-info badge-pulse">Live</span>' : ''}
+      </div>`).join('');
+  } else {
+    logsEl.innerHTML = '<p style="color:#888;font-size:13px">No log files found</p>';
+  }
+}
+
+async function loadClients() {
+  const clients = await (await fetch('/api/clients')).json();
+  document.getElementById('client-grid').innerHTML = clients.length
+    ? clients.map(c => {
+        const ini = c.display.split(/[_\s]/).slice(0,2).map(w=>w[0]?.toUpperCase()||'').join('');
+        return `<div class="client-card"><div class="avatar">${ini}</div><div style="font-size:13px;font-weight:600">${esc(c.display)}</div><div style="font-size:11px;color:#888">${esc(c.username)}</div></div>`;
+      }).join('')
+    : '<p style="color:#888;font-size:13px">No clients found</p>';
+}
+
+function renderEnvEditor(entries, editorId) {
+  const el = document.getElementById(editorId);
+  el.innerHTML = entries.map((e, i) => {
+    if (e.type === 'comment') {
+      return `<div class="env-row comment"><span class="comment-text">${esc(e.raw)}</span></div>`;
+    }
+    const isSecret = /PASSWORD|TOKEN|PASS|SECRET/i.test(e.key);
+    return `<div class="env-row">
+      <input class="ekey" value="${esc(e.key)}" data-idx="${i}" data-field="key" onchange="envChange('${editorId}',this)">
+      <input class="eval" type="${isSecret?'password':'text'}" value="${esc(e.value)}" data-idx="${i}" data-field="value" onchange="envChange('${editorId}',this)">
+    </div>`;
+  }).join('');
+  el._data = entries;
+}
+
+function envChange(editorId, input) {
+  const el = document.getElementById(editorId);
+  const idx = +input.dataset.idx;
+  el._data[idx][input.dataset.field] = input.value;
+}
+
+async function loadConfig() {
+  const [envData, foldersData, qData] = await Promise.all([
+    fetch('/api/config/env').then(r=>r.json()),
+    fetch('/api/config/folders').then(r=>r.json()),
+    loadQuarterData()
+  ]);
+  renderEnvEditor(envData, 'env-editor');
+  renderEnvEditor(foldersData, 'folders-editor');
+}
+
+async function saveEnv() {
+  const el = document.getElementById('env-editor');
+  await post('/api/config/env', { entries: el._data });
+  showSaved('env-save-msg');
+}
+
+async function saveFolders() {
+  const el = document.getElementById('folders-editor');
+  await post('/api/config/folders', { entries: el._data });
+  showSaved('folders-save-msg');
+}
+
+async function loadYaml() {
+  const q = v('yaml-quarter');
+  if (!q) return;
+  const d = await (await fetch(`/api/config/quarterly/${q}`)).json();
+  document.getElementById('yaml-editor').value = d.content || '';
+}
+
+async function saveYaml() {
+  const q = v('yaml-quarter');
+  const content = document.getElementById('yaml-editor').value;
+  await post(`/api/config/quarterly/${q}`, { content });
+  showSaved('yaml-save-msg');
+}
+
+function showSaved(id) {
+  const el = document.getElementById(id);
+  el.style.display = 'inline';
+  setTimeout(() => el.style.display = 'none', 2500);
+}
+
+async function runFullPipeline() {
+  const q = v('fp-q');
+  const term = document.getElementById('fp-t');
+  term.style.display = 'block';
+  term.innerHTML = `<span class="t-info">Starting pipeline for ${q}...\n</span>`;
+  for (const [action, body] of [
+    ['ingest', {dry_run:false, quarter:q}],
+    ['provision', {dry_run:false}],
+    ['scan', {}]
+  ]) {
+    const { job_id } = await post(`/api/run/${action}`, body);
+    const status = await pollJob(job_id, 'fp-t');
+    if (status === 'error') {
+      term.innerHTML += `<span class="t-err">\nStep failed — stopping. Check output above.\n</span>`;
+      return;
+    }
+  }
+  term.innerHTML += `<span class="t-ok">\n✅ Pipeline complete! Remember to send client notifications.\n</span>`;
+}
+
+async function loadAll() {
+  await Promise.all([loadStatus(), loadMapflowStatus(), loadQuarterData()]);
+}
+
+loadAll();
+setInterval(loadAll, 30000);
+setInterval(async () => {
+  if (document.getElementById('page-downloads').classList.contains('active')) loadDownloads();
+}, 10000);
+</script>
+</body>
+</html>
