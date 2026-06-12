@@ -25,3 +25,16 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+
+# ── Client data — never commit ─────────────────────────────────
+data/client_distribution.csv
+data/client_distribution.csv.bak
+data/notifications.json
+quarterly/*.yaml
+backups/
+logs/
+nextcloud-agent-system-v*.zip
+
+# Dashboard
+dashboard/__pycache__/
+dashboard/*.pyc

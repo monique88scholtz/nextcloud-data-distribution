@@ -1,0 +1,1867 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GeoInt Distribution Dashboard</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Montserrat',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f2;color:#1a1a1a;font-size:14px}
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:216px;background:#fff;border-right:1px solid #e8e8e4;display:flex;flex-direction:column;z-index:10}
+.logo{padding:18px 20px 14px;border-bottom:1px solid #e8e8e4}
+.logo h1{font-size:15px;font-weight:600}
+.logo p{font-size:11px;color:#999;margin-top:2px}
+.nav{padding:10px 0;flex:1;overflow-y:auto}
+.nav-section{padding:4px 20px 2px;font-size:10px;font-weight:600;color:#bbb;text-transform:uppercase;letter-spacing:0.08em;margin-top:8px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:8px 20px;font-size:13px;color:#666;cursor:pointer;border-left:3px solid transparent;transition:all 0.12s}
+.nav-item:hover{background:#f8f8f6;color:#1a1a1a}
+.nav-item.active{background:#f0f7ff;color:#185fa5;border-left-color:#185fa5;font-weight:500}
+.nav-item i{font-size:16px;flex-shrink:0}
+.nav-bottom{padding:12px 16px;border-top:1px solid #e8e8e4}
+.nc-btn{display:flex;align-items:center;gap:8px;padding:9px 12px;background:#f0f7ff;border:1px solid #b5d4f4;border-radius:8px;color:#185fa5;font-size:13px;font-weight:500;cursor:pointer;text-decoration:none;transition:all 0.12s;width:100%}
+.nc-btn:hover{background:#e6f1fb}
+.main{margin-left:216px;padding:24px;min-height:100vh}
+.page{display:none}.page.active{display:block}
+.page-header{margin-bottom:20px;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.page-header h2{font-size:20px;font-weight:600;margin-bottom:3px}
+.page-header p{color:#888;font-size:13px}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:20px}
+.metric{background:#fff;border:1px solid #e8e8e4;border-radius:10px;padding:14px}
+.metric-label{font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:5px}
+.metric-value{font-size:20px;font-weight:600}
+.metric-sub{font-size:11px;color:#888;margin-top:3px}
+.m-ok .metric-value{color:#0f6e56}.m-warn .metric-value{color:#ba7517}.m-err .metric-value{color:#a32d2d}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.card{background:#fff;border:1px solid #e8e8e4;border-radius:10px;padding:18px;margin-bottom:14px}
+.card:last-child{margin-bottom:0}
+.card-title{font-size:12px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:14px;display:flex;align-items:center;gap:7px}
+.svc-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid #f2f2ef}
+.svc-row:last-child{border-bottom:none}
+.dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.dot-ok{background:#1d9e75}.dot-err{background:#e24b4a}.dot-warn{background:#ef9f27}
+.badge{font-size:11px;padding:2px 8px;border-radius:20px;font-weight:500}
+.b-ok{background:#e1f5ee;color:#0f6e56}.b-err{background:#fcebeb;color:#a32d2d}
+.b-warn{background:#faeeda;color:#854f0b}.b-info{background:#e6f1fb;color:#185fa5}
+.b-pulse{animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.55}}
+
+/* Pipeline board */
+.pipeline-board{display:flex;flex-direction:column;gap:0}
+.next-action-banner{border-radius:10px;padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;gap:14px}
+.na-pending{background:#faeeda;border:1px solid #fac775}
+.na-ready{background:#e1f5ee;border:1px solid #9fe1cb}
+.na-done{background:#f0f7ff;border:1px solid #b5d4f4}
+.na-icon{font-size:28px;flex-shrink:0}
+.na-text h3{font-size:15px;font-weight:600;margin-bottom:3px}
+.na-text p{font-size:13px;color:#555}
+.na-btn{margin-left:auto;flex-shrink:0}
+.progress-track{display:flex;align-items:center;gap:0;margin-bottom:20px;background:#fff;border:1px solid #e8e8e4;border-radius:10px;overflow:hidden}
+.progress-stage{flex:1;padding:12px 8px;text-align:center;font-size:11px;color:#aaa;border-right:1px solid #e8e8e4;position:relative}
+.progress-stage:last-child{border-right:none}
+.progress-stage.done{background:#e1f5ee;color:#0f6e56;font-weight:500}
+.progress-stage.current{background:#e6f1fb;color:#185fa5;font-weight:600}
+.progress-stage .stage-icon{font-size:16px;display:block;margin-bottom:2px}
+.dataset-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-bottom:20px}
+.dataset-card{background:#fff;border:1px solid #e8e8e4;border-radius:10px;padding:14px;transition:border-color 0.15s}
+.dataset-card.ds-downloaded{border-color:#9fe1cb;background:#f8fffe}
+.dataset-card.ds-ingested{border-color:#9fe1cb;background:#f0fff8}
+.dataset-card.ds-active{border-color:#b5d4f4;background:#f0f7ff;animation:border-pulse 2s infinite}
+@keyframes border-pulse{0%,100%{border-color:#b5d4f4}50%{border-color:#185fa5}}
+.ds-header{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.ds-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.ds-icon-pending{background:#f0f0ec}
+.ds-icon-downloading{background:#e6f1fb}
+.ds-icon-downloaded{background:#e1f5ee}
+.ds-icon-ingested{background:#d4f5e9}
+.ds-name{font-size:13px;font-weight:600;flex:1}
+.ds-status{font-size:11px;color:#888;margin-bottom:6px}
+.ds-size{font-size:11px;font-weight:500;color:#185fa5}
+.ds-actions{display:flex;gap:6px;margin-top:8px}
+
+/* Standard UI */
+.btn{height:34px;padding:0 14px;border:1px solid #e0e0dc;border-radius:6px;font-size:13px;cursor:pointer;background:#fff;color:#1a1a1a;display:inline-flex;align-items:center;gap:6px;transition:all 0.12s;white-space:nowrap;flex-shrink:0}
+.btn:hover{background:#f5f5f2;border-color:#ccc}
+.btn:active{transform:scale(0.98)}
+.btn-primary{background:#185fa5;color:#fff;border-color:#185fa5}
+.btn-primary:hover{background:#0c447c}
+.btn-success{background:#0f6e56;color:#fff;border-color:#0f6e56}
+.btn-success:hover{background:#085041}
+.btn-danger{background:#a32d2d;color:#fff;border-color:#a32d2d}
+.btn-sm{height:28px;padding:0 10px;font-size:12px}
+.note{border-radius:6px;padding:9px 13px;font-size:12px;margin:8px 0;line-height:1.5}
+.n-info{background:#e6f1fb;color:#0c447c}
+.n-warn{background:#faeeda;color:#633806}
+.n-success{background:#e1f5ee;color:#085041}
+.n-danger{background:#fcebeb;color:#791f1f}
+.terminal{background:#1e1e1e;border-radius:8px;padding:12px 14px;font-family:'SF Mono',Menlo,monospace;font-size:11.5px;color:#d4d4d4;min-height:80px;max-height:300px;overflow-y:auto;margin-top:10px;line-height:1.6;white-space:pre-wrap;word-break:break-all}
+.t-ok{color:#4ec9b0}.t-err{color:#f48771}.t-warn{color:#dcdcaa}.t-info{color:#9cdcfe}
+.spinner{display:inline-block;width:13px;height:13px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;animation:spin 0.7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.env-editor{display:flex;flex-direction:column;gap:5px;max-height:360px;overflow-y:auto;margin-bottom:10px}
+.env-row{display:flex;align-items:center;gap:8px}
+.env-row .ekey{width:220px;flex-shrink:0;font-family:monospace;font-size:12px}
+.env-row .eval{flex:1;font-family:monospace;font-size:12px}
+.env-cmt{font-size:12px;color:#aaa;font-family:monospace;padding:2px 0}
+.yaml-editor{width:100%;min-height:280px;font-family:monospace;font-size:12px;padding:10px;border:1px solid #e0e0dc;border-radius:6px;resize:vertical;background:#fafaf8}
+.client-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
+.client-card{background:#fff;border:1px solid #e8e8e4;border-radius:10px;padding:14px}
+.avatar{width:36px;height:36px;border-radius:50%;background:#e6f1fb;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:#185fa5;margin-bottom:8px}
+.groups-list{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.group-tag{font-size:10px;background:#f0f0ec;color:#666;padding:2px 6px;border-radius:4px}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:100;display:flex;align-items:center;justify-content:center}
+.modal{background:#fff;border-radius:12px;padding:24px;width:480px;max-width:95vw;max-height:90vh;overflow-y:auto}
+.modal h2{font-size:17px;font-weight:600;margin-bottom:4px}
+.modal p{font-size:13px;color:#888;margin-bottom:16px}
+.modal-footer{display:flex;gap:10px;margin-top:16px;justify-content:flex-end}
+.field{margin-bottom:12px}
+.field label{display:block;font-size:13px;color:#555;margin-bottom:5px;font-weight:500}
+.field input{width:100%}
+select,input[type=text],input[type=password]{height:34px;padding:0 10px;border:1px solid #e0e0dc;border-radius:6px;font-size:13px;background:#fff;color:#1a1a1a;outline:none}
+select:focus,input:focus{border-color:#185fa5;box-shadow:0 0 0 2px #e6f1fb}
+.groups-check{display:flex;flex-direction:column;gap:6px;max-height:180px;overflow-y:auto;border:1px solid #e0e0dc;border-radius:6px;padding:10px}
+.groups-check label{display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer}
+.form-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.form-row label{font-size:13px;color:#555;min-width:80px}
+.divider{border:none;border-top:1px solid #e8e8e4;margin:14px 0}
+
+/* Toast notification */
+.toast-container{position:fixed;bottom:24px;right:24px;z-index:200;display:flex;flex-direction:column;gap:8px}
+.toast{background:#1e1e1e;color:#fff;padding:12px 16px;border-radius:8px;font-size:13px;max-width:320px;display:flex;align-items:center;gap:10px;animation:slide-up 0.3s ease;box-shadow:0 4px 20px rgba(0,0,0,0.3)}
+.toast.t-success{border-left:3px solid #4ec9b0}
+.toast.t-error{border-left:3px solid #f48771}
+.toast.t-info{border-left:3px solid #9cdcfe}
+@keyframes slide-up{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="logo" style="padding:14px 16px 10px">
+    <img src="data:image/png;base64,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" alt="GeoInt" style="width:100%;max-width:174px;display:block;margin-bottom:4px">
+    <p style="font-size:10px;color:#999;letter-spacing:0.05em;text-transform:uppercase;font-weight:500">Distribution Dashboard</p>
+  </div>
+  <nav class="nav">
+    <div class="nav-section">Overview</div>
+    <div class="nav-item active" onclick="showPage('dashboard',this)"><i class="ti ti-layout-dashboard"></i>Dashboard</div>
+    <div class="nav-item" onclick="showPage('pipeline',this)"><i class="ti ti-player-play"></i>Pipeline</div>
+    <div class="nav-item" onclick="showPage('clients',this)"><i class="ti ti-users"></i>Clients</div>
+    <div class="nav-section">Settings</div>
+    <div class="nav-item" onclick="showPage('config',this)"><i class="ti ti-settings"></i>Configuration</div>
+    <div class="nav-item" onclick="showPage('tools',this)"><i class="ti ti-tool"></i>Tools</div>
+    <div class="nav-section">Delivery</div>
+    <div class="nav-item" onclick="showPage('notify',this);loadNotifications()"><i class="ti ti-mail"></i>Notifications</div>
+    <div class="nav-item" onclick="showPage('uploads',this);loadUploads()"><i class="ti ti-upload"></i>Client Uploads</div>
+    <div class="nav-item" onclick="showPage('sftp',this);loadSftpStatus()"><i class="ti ti-cloud-upload"></i>SFTP Push</div>
+  </nav>
+  <div class="nav-bottom">
+    <a class="nc-btn" id="nc-link" href="{{ nc_url }}" target="_blank">
+      <i class="ti ti-external-link" style="font-size:15px"></i>Open Nextcloud
+    </a>
+  </div>
+</div>
+
+<main class="main">
+
+<!-- DASHBOARD -->
+<div id="page-dashboard" class="page active">
+  <div class="page-header">
+    <div><h2>Dashboard</h2><p>Server status at a glance</p></div>
+    <button class="btn" onclick="loadAll()"><i class="ti ti-refresh"></i> Refresh</button>
+  </div>
+  <div class="metrics">
+    <div class="metric" id="m-nc"><div class="metric-label">Nextcloud</div><div class="metric-value">—</div><div class="metric-sub" id="mv-ncver">—</div></div>
+    <div class="metric"><div class="metric-label">Clients</div><div class="metric-value" id="mv-clients">—</div><div class="metric-sub">active</div></div>
+    <div class="metric"><div class="metric-label">Disk used</div><div class="metric-value" id="mv-disk">—</div><div class="metric-sub" id="mv-diskfree">—</div></div>
+    <div class="metric" id="m-mf"><div class="metric-label">Downloads</div><div class="metric-value" id="mv-mf">—</div><div class="metric-sub" id="mv-mfsub">—</div></div>
+    <div class="metric" id="m-ag"><div class="metric-label">Refresh agent</div><div class="metric-value" id="mv-ag">—</div><div class="metric-sub">file sync</div></div>
+  </div>
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title"><i class="ti ti-server" style="font-size:14px"></i>Services</div>
+      <div id="svc-list"><div style="color:#888;font-size:13px">Loading...</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><i class="ti ti-bolt" style="font-size:14px"></i>Quick actions</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button class="btn" onclick="quickAction('scan','qa-t')"><i class="ti ti-refresh"></i> Refresh client files</button>
+        <button class="btn" onclick="quickAction('healthcheck','qa-t')"><i class="ti ti-heart-rate-monitor"></i> Health check</button>
+        <button class="btn" onclick="quickAction('backup','qa-t')"><i class="ti ti-database"></i> Backup now</button>
+        <button class="btn btn-primary" onclick="showPage('pipeline',document.querySelectorAll('.nav-item')[1])"><i class="ti ti-player-play"></i> Go to pipeline</button>
+        <button class="btn" onclick="openNextQuarterWizard()" style="border-color:#185fa5;color:#185fa5"><i class="ti ti-calendar-plus"></i> Next Quarterly Distribution</button>
+      </div>
+    </div>
+  </div>
+  <div class="card" id="qa-wrap" style="display:none">
+    <div class="card-title"><i class="ti ti-terminal" style="font-size:14px"></i>Output</div>
+    <div class="terminal" id="qa-t"></div>
+  </div>
+</div>
+
+<!-- PIPELINE -->
+<div id="page-pipeline" class="page">
+  <div class="page-header">
+    <div><h2>Pipeline</h2><p>Follow the steps in order — each step unlocks the next</p></div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <label style="font-size:13px;color:#666">Quarter</label>
+      <select id="pipe-quarter" onchange="loadPipeline()"></select>
+      <button class="btn" onclick="loadPipeline()"><i class="ti ti-refresh"></i></button>
+    </div>
+  </div>
+
+  <!-- Step list -->
+  <div id="pipe-steps" style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">
+    <div style="color:#888;font-size:13px"><span class="spinner"></span> Loading...</div>
+  </div>
+
+  <!-- Dataset status grid -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-database" style="font-size:14px"></i>Dataset status — <span id="ds-summary">loading...</span></div>
+    <div class="dataset-grid" id="dataset-grid">
+      <div style="color:#888;font-size:13px"><span class="spinner"></span> Loading...</div>
+    </div>
+  </div>
+
+  <!-- Action terminal -->
+  <div class="card" id="pipe-terminal-card" style="display:none">
+    <div class="card-title"><i class="ti ti-terminal" style="font-size:14px"></i>Output</div>
+    <div class="terminal" id="pipe-t"></div>
+  </div>
+</div>
+<!-- CLIENTS -->
+<div id="page-clients" class="page">
+  <div class="page-header">
+    <div><h2>Clients</h2><p>Active Nextcloud accounts</p></div>
+    <button class="btn btn-primary" onclick="openAddClient()"><i class="ti ti-user-plus"></i> Add new client</button>
+  </div>
+  <div class="client-grid" id="client-grid"><div style="color:#888;font-size:13px"><span class="spinner"></span> Loading...</div></div>
+</div>
+
+<!-- CONFIG -->
+<div id="page-config" class="page">
+  <div class="page-header"><div><h2>Configuration</h2><p>Server settings and quarterly configs</p></div></div>
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title"><i class="ti ti-lock" style="font-size:14px"></i>Server config (.env)</div>
+      <p style="font-size:12px;color:#888;margin-bottom:10px">Passwords, API tokens, SMTP, MAPIT SFTP settings.</p>
+      <div class="env-editor" id="env-ed">Loading...</div>
+      <div style="display:flex;align-items:center;gap:10px;padding-top:8px">
+        <button class="btn btn-primary" onclick="saveEnv()"><i class="ti ti-device-floppy"></i> Save</button>
+        <span id="env-msg" style="font-size:12px;color:#0f6e56;display:none"><i class="ti ti-check"></i> Saved!</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><i class="ti ti-folder" style="font-size:14px"></i>Folder paths (.folders.env)</div>
+      <p style="font-size:12px;color:#888;margin-bottom:10px">Auto-generated from the quarterly YAML. Shows which datasets are ready to ingest.</p>
+      <div class="form-row" style="margin-bottom:10px">
+        <select id="gen-q"></select>
+        <button class="btn" onclick="genEnvPreview()"><i class="ti ti-eye"></i> Preview</button>
+        <button class="btn btn-primary" onclick="genEnvNow()"><i class="ti ti-refresh"></i> Regenerate</button>
+      </div>
+      <div class="terminal" id="gen-t" style="display:none;margin-bottom:10px;max-height:150px"></div>
+      <div class="env-editor" id="fol-ed">Loading...</div>
+      <div style="display:flex;align-items:center;gap:10px;padding-top:8px">
+        <span id="fol-msg" style="font-size:12px;color:#0f6e56;display:none"><i class="ti ti-check"></i> Regenerated!</span>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title"><i class="ti ti-calendar" style="font-size:14px"></i>Quarterly config — clients &amp; datasets</div>
+    <div class="note n-info" style="margin-bottom:12px"><i class="ti ti-info-circle"></i> This is the master config for each quarter. Edit client lists, dataset assignments, and version numbers here. Everything else generates from this file.</div>
+    <div class="form-row" style="margin-bottom:12px">
+      <label>Quarter</label>
+      <select id="yaml-q" onchange="loadYaml()"></select>
+      <button class="btn" onclick="loadYaml()"><i class="ti ti-refresh"></i> Load</button>
+    </div>
+    <textarea class="yaml-editor" id="yaml-ed" placeholder="Select a quarter above..."></textarea>
+    <div style="display:flex;align-items:center;gap:10px;padding-top:8px">
+      <button class="btn btn-primary" onclick="saveYaml()"><i class="ti ti-device-floppy"></i> Save</button>
+      <span id="yaml-msg" style="font-size:12px;color:#0f6e56;display:none"><i class="ti ti-check"></i> Saved!</span>
+    </div>
+  </div>
+</div>
+
+<!-- TOOLS -->
+<div id="page-tools" class="page">
+  <div class="page-header"><div><h2>Tools</h2><p>Maintenance and utilities</p></div></div>
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title"><i class="ti ti-heart-rate-monitor" style="font-size:14px"></i>Health check</div>
+      <p style="font-size:13px;color:#888;margin-bottom:12px">Checks all services, disk, Nextcloud, firewall, and downloads.</p>
+      <button class="btn btn-primary" onclick="toolRun('healthcheck','t1t')"><i class="ti ti-player-play"></i> Run</button>
+      <div class="terminal" id="t1t" style="display:none;margin-top:10px"></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><i class="ti ti-database" style="font-size:14px"></i>Backup</div>
+      <p style="font-size:13px;color:#888;margin-bottom:4px">Backs up database and config. Keeps 30 days.</p>
+      <p style="font-size:12px;color:#aaa;margin-bottom:12px">Nextcloud goes into maintenance mode for ~2 minutes. Distribution data is NOT backed up — it's re-downloadable from TomTom.</p>
+      <button class="btn btn-primary" onclick="toolRun('backup','t2t')"><i class="ti ti-player-play"></i> Run backup</button>
+      <div class="terminal" id="t2t" style="display:none;margin-top:10px"></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><i class="ti ti-bell" style="font-size:14px"></i>Test email notification</div>
+      <p style="font-size:13px;color:#888;margin-bottom:12px">Sends a test email to support@geoint.africa to verify SMTP is configured correctly.</p>
+      <button class="btn btn-primary" onclick="testEmail()"><i class="ti ti-mail"></i> Send test email</button>
+      <div id="email-result" style="margin-top:10px;font-size:13px"></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><i class="ti ti-refresh" style="font-size:14px"></i>Force file scan</div>
+      <p style="font-size:13px;color:#888;margin-bottom:12px">Use when clients say they can't see new data.</p>
+      <button class="btn btn-primary" onclick="toolRun('scan','t3t')"><i class="ti ti-player-play"></i> Scan all</button>
+      <div class="terminal" id="t3t" style="display:none;margin-top:10px"></div>
+    </div>
+  </div>
+
+  <!-- MapFlow cache cleanup -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-trash" style="font-size:14px"></i>Clean up MapFlow cache</div>
+    <p style="font-size:13px;color:#888;margin-bottom:8px">
+      Removes MapFlow client download folders that have already been ingested into the distribution folder.
+      These are safe to delete and can free up significant disk space.
+    </p>
+    <div id="mapflow-cache-info" style="font-size:13px;margin-bottom:12px;color:#888">Click check to see what can be deleted.</div>
+    <div style="display:flex;gap:8px">
+      <button class="btn" onclick="checkMapflowCache()"><i class="ti ti-search"></i> Check cache size</button>
+      <button class="btn btn-danger" id="mapflow-delete-btn" style="display:none" onclick="clearMapflowCache()"><i class="ti ti-trash"></i> Delete cache</button>
+    </div>
+    <div class="terminal" id="mapflow-cache-t" style="display:none;margin-top:10px"></div>
+  </div>
+  <!-- Download cleanup -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-trash" style="font-size:14px"></i>Clean up download folder</div>
+    <p style="font-size:13px;color:#888;margin-bottom:12px">
+      Remove source download folders that have already been ingested into the distribution folder.
+      Only folders that are fully ingested will be shown. This frees up disk space for the next quarter's downloads.
+    </p>
+    <div class="form-row" style="margin-bottom:12px">
+      <label style="font-size:13px;color:#555">Quarter</label>
+      <select id="cleanup-quarter"></select>
+      <button class="btn" onclick="loadCleanupCandidates()"><i class="ti ti-search"></i> Check what can be deleted</button>
+    </div>
+    <div id="cleanup-list" style="display:none;margin-bottom:12px">
+      <div id="cleanup-items"></div>
+      <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
+        <button class="btn btn-danger" onclick="runCleanup()"><i class="ti ti-trash"></i> Delete selected folders</button>
+        <span style="font-size:12px;color:#888" id="cleanup-space-hint"></span>
+      </div>
+    </div>
+    <div class="terminal" id="cleanup-t" style="display:none;margin-top:10px"></div>
+  </div>
+</div>
+</div>
+
+<!-- ADD CLIENT MODAL -->
+<div class="modal-bg" id="add-modal" style="display:none" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <h2><i class="ti ti-user-plus" style="font-size:18px;vertical-align:-2px;margin-right:8px"></i>Add new client</h2>
+    <p>Creates a Nextcloud account immediately.</p>
+    <div class="field">
+      <label>Display name <span style="color:#e24b4a">*</span></label>
+      <input type="text" id="ac-name" placeholder="e.g. Monique Test" oninput="autoUsername()">
+    </div>
+    <div class="field">
+      <label>Username (auto-generated)</label>
+      <input type="text" id="ac-user" placeholder="e.g. monique_test">
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <div style="display:flex;gap:8px">
+        <input type="text" id="ac-pass" placeholder="Leave blank to auto-generate" style="flex:1">
+        <button class="btn" onclick="genPass()"><i class="ti ti-refresh"></i> Generate</button>
+      </div>
+    </div>
+    <div class="field">
+      <label>Data access <span style="color:#888;font-weight:400;font-size:12px">— what can this client see?</span></label>
+      <div id="ac-datasets" style="border:1px solid #e0e0dc;border-radius:6px;padding:10px;max-height:240px;overflow-y:auto;font-size:13px">
+        <span style="color:#888">Loading...</span>
+      </div>
+    </div>
+    <div class="field" id="ac-custom-block" style="display:none">
+      <label>Custom folder name <span style="color:#e24b4a">*</span></label>
+      <input type="text" id="ac-custom-name" placeholder="e.g. Speed Restrictions" oninput="updateCustomPreview()">
+      <p id="ac-custom-preview" style="font-size:11px;color:#888;margin-top:4px"></p>
+    </div>
+    <div class="terminal" id="ac-t" style="display:none"></div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="submitAddClient()"><i class="ti ti-user-plus"></i> Create client</button>
+    </div>
+  </div>
+</div>
+
+<!-- DOWNLOAD MODAL -->
+<div class="modal-bg" id="dl-modal" style="display:none" onclick="if(event.target===this)closeDlModal()">
+  <div class="modal">
+    <h2><i class="ti ti-download" style="font-size:18px;vertical-align:-2px;margin-right:8px"></i>Download data</h2>
+    <p>Downloads run in the background. You'll receive an email when complete.</p>
+    <div class="field">
+      <label>Quarter</label>
+      <select id="dl-quarter" onchange="loadVersionForQuarter()"></select>
+    </div>
+    <div class="field">
+      <label>Product to download</label>
+      <select id="dl-family" onchange="loadRegionsForProduct();updateVersionDisplay();">
+        <option value="MNR">MultiNet-R — Road network data</option>
+        <option value="MN">MultiNet — Navigation data</option>
+        <option value="MNSP">Speed Profiles</option>
+        <option value="MNPOI">Premium Points of Interest (POI)</option>
+        <option value="MNAP">Address Points (APT)</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Region</label>
+      <select id="dl-region" onchange="checkAlreadyDownloaded()">
+        <option value="">Loading regions...</option>
+      </select>
+      <p style="font-size:11px;color:#888;margin-top:4px" id="dl-region-hint"></p>
+    </div>
+    <div class="field">
+      <label>Version number</label>
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+        <input type="text" id="dl-version-base" placeholder="2026.06" style="font-family:monospace;width:110px" oninput="updateVersionDisplay()">
+        <span style="color:#aaa;font-size:16px;font-weight:300">.</span>
+        <input type="text" id="dl-version-suffix" style="font-family:monospace;width:52px;background:#f0f7ff;color:#185fa5;font-weight:600;text-align:center;border-color:#b5d4f4" readonly title="Auto-set based on product type">
+        <input type="hidden" id="dl-version">
+      </div>
+      <p style="font-size:11px;margin-top:5px" id="dl-version-note"></p>
+    </div>
+    <div id="dl-already-warn" class="note n-warn" style="display:none">
+      <i class="ti ti-alert-triangle"></i> <strong>This product is already downloaded.</strong>
+      The data already exists on the server. You don't need to download it again unless TomTom has released a newer version.
+      <br><br>
+      <span id="dl-already-detail" style="font-size:11px;color:#633806"></span>
+      <br>
+      <label style="display:flex;align-items:center;gap:8px;margin-top:8px;cursor:pointer;font-size:13px">
+        <input type="checkbox" id="dl-force"> I understand — download again anyway (will overwrite existing data)
+      </label>
+    </div>
+    <div class="note n-info" id="dl-info-note"><i class="ti ti-info-circle"></i> The download will run in the background — you can close this page. You'll get an email at support@geoint.africa when it's done.</div>
+    <div id="dl-status-msg" style="display:none;margin-top:10px;padding:10px 14px;border-radius:6px;font-size:13px;line-height:1.5"></div>
+    <div class="terminal" id="dl-t" style="display:none"></div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeDlModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="startDownload()"><i class="ti ti-download"></i> Start download</button>
+    </div>
+  </div>
+</div>
+
+<!-- NOTIFICATIONS PAGE -->
+<div id="page-notify" class="page">
+  <div class="page-header">
+    <div><h2>Client Notifications</h2><p>Track which clients have been emailed their data access details</p></div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <select id="notify-quarter"></select>
+      <button class="btn" onclick="loadNotifications()"><i class="ti ti-refresh"></i></button>
+    </div>
+  </div>
+  <div class="metrics" style="margin-bottom:16px">
+    <div class="metric"><div class="metric-label">Total clients</div><div class="metric-value" id="nm-total">—</div></div>
+    <div class="metric m-ok"><div class="metric-label">Notified</div><div class="metric-value" id="nm-sent">—</div></div>
+    <div class="metric m-warn"><div class="metric-label">Pending</div><div class="metric-value" id="nm-pending">—</div></div>
+  </div>
+  <div class="card" style="margin-bottom:14px">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+      <div>
+        <div style="font-size:14px;font-weight:600;margin-bottom:3px">Send all pending notifications</div>
+        <div style="font-size:12px;color:#888">Only sends to clients not yet notified. Emails go to support@geoint.africa.</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-success" onclick="sendAllNotifications(false)"><i class="ti ti-mail"></i> Send all pending</button>
+        <button class="btn" onclick="sendAllNotifications(true)"><i class="ti ti-mail-forward"></i> Re-send all</button>
+      </div>
+    </div>
+    <div class="terminal" id="notify-t" style="display:none;margin-top:10px"></div>
+  </div>
+  <div class="card">
+    <div class="card-title"><i class="ti ti-users" style="font-size:14px"></i>Client notification status</div>
+    <div id="notify-table"><div style="color:#888;font-size:13px"><span class="spinner"></span> Loading...</div></div>
+  </div>
+  <!-- JIRA MESSAGE MODAL -->
+  <div class="modal-bg" id="jira-modal" style="display:none" onclick="if(event.target===this)closeJiraModal()">
+    <div class="modal" style="width:620px;max-width:95vw">
+      <h2 style="margin-bottom:4px"><i class="ti ti-brand-jira" style="font-size:18px;vertical-align:-2px;margin-right:8px"></i>Jira comment</h2>
+      <p style="font-size:12px;color:#888;margin-bottom:4px" id="jira-ref"></p>
+      <p style="font-size:12px;color:#888;margin-bottom:12px">Copy this message and paste it into the Jira ticket comment field.</p>
+      <textarea id="jira-text" style="width:100%;height:320px;font-family:'Montserrat',sans-serif;font-size:12px;padding:12px;border:1px solid #e0e0dc;border-radius:8px;resize:vertical;background:#fafaf8;line-height:1.6" readonly></textarea>
+      <div class="modal-footer">
+        <button class="btn" onclick="closeJiraModal()">Close</button>
+        <button class="btn btn-primary" onclick="copyJiraMessage()"><i class="ti ti-copy"></i> Copy to clipboard</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-bg" id="email-preview-modal" style="display:none" onclick="if(event.target===this)closeEmailPreview()">
+    <div class="modal" style="width:580px;max-width:95vw">
+      <h2 style="margin-bottom:4px">Email preview</h2>
+      <p id="preview-subject" style="font-size:12px;color:#888;margin-bottom:12px"></p>
+      <div id="preview-frame" style="border:1px solid #e8e8e4;border-radius:8px;overflow:auto;max-height:460px;background:#fff"></div>
+      <div class="modal-footer">
+        <button class="btn" onclick="closeEmailPreview()">Close</button>
+        <button class="btn btn-success" id="preview-send-btn"><i class="ti ti-mail"></i> Send this email</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- CLIENT UPLOADS -->
+<div id="page-uploads" class="page">
+  <div class="page-header">
+    <div><h2>Client Uploads</h2><p>Upload files directly to a client's Nextcloud folder</p></div>
+    <button class="btn" onclick="loadUploads()"><i class="ti ti-refresh"></i> Refresh</button>
+  </div>
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title"><i class="ti ti-upload" style="font-size:14px"></i>Upload files to client</div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px">
+      <div style="flex:1;min-width:180px">
+        <label style="font-size:12px;color:#888;display:block;margin-bottom:4px">Client</label>
+        <select id="upload-client-select" style="width:100%;padding:8px 10px;border:1px solid #e0e0dc;border-radius:6px;font-size:13px;background:#fff">
+          <option value="">— Select client —</option>
+        </select>
+      </div>
+      <div style="flex:1;min-width:160px">
+        <label style="font-size:12px;color:#888;display:block;margin-bottom:4px">Folder name</label>
+        <input type="text" id="upload-folder-name" placeholder="e.g. Speed Restrictions Q2"
+          style="width:100%;padding:7px 10px;border:1px solid #e0e0dc;border-radius:6px;font-size:13px;background:#fff">
+      </div>
+      <div style="flex:2;min-width:220px">
+        <label style="font-size:12px;color:#888;display:block;margin-bottom:4px">Files</label>
+        <input type="file" id="upload-file-input" multiple
+          style="width:100%;padding:7px 10px;border:1px solid #e0e0dc;border-radius:6px;font-size:13px;background:#fff">
+      </div>
+      <button class="btn btn-primary" onclick="doUpload()" style="white-space:nowrap">
+        <i class="ti ti-upload"></i> Upload
+      </button>
+    </div>
+    <div id="upload-progress" style="display:none">
+      <div style="height:4px;background:#e8e8e4;border-radius:2px;overflow:hidden">
+        <div id="upload-bar" style="height:100%;background:#2e7d32;width:0%;transition:width 0.3s"></div>
+      </div>
+      <div id="upload-status" style="font-size:12px;color:#888;margin-top:6px"></div>
+    </div>
+  </div>
+  <div id="uploads-list"><div style="color:#888;font-size:13px"><span class="spinner"></span> Loading...</div></div>
+</div>
+
+<!-- NEXT QUARTER WIZARD -->
+<div class="modal-bg" id="nq-modal" style="display:none" onclick="if(event.target===this)closeNqModal()">
+  <div class="modal" style="width:580px;max-width:95vw">
+    <h2><i class="ti ti-calendar-plus" style="font-size:18px;vertical-align:-2px;margin-right:8px"></i>Next Quarterly Distribution</h2>
+    <p id="nq-subtitle" style="font-size:13px;color:#888;margin-bottom:16px">Loading preview...</p>
+    <div id="nq-preview" style="margin-bottom:16px">
+      <div style="color:#888;font-size:13px"><span class="spinner"></span> Loading...</div>
+    </div>
+    <div class="terminal" id="nq-t" style="display:none;margin-bottom:12px"></div>
+    <div class="modal-footer" id="nq-footer">
+      <button class="btn" onclick="closeNqModal()">Cancel</button>
+      <button class="btn btn-primary" id="nq-confirm-btn" onclick="runNextQuarter()"><i class="ti ti-player-play"></i> Create next quarter</button>
+    </div>
+  </div>
+</div>
+
+<!-- SFTP PUSH -->
+<div id="page-sftp" class="page">
+  <div class="page-header">
+    <div><h2>SFTP Push</h2><p>Push data to external partners</p></div>
+    <button class="btn" onclick="loadSftpStatus()"><i class="ti ti-refresh"></i> Refresh</button>
+  </div>
+  <div id="sftp-content"><div style="color:#888;font-size:13px"><span class="spinner"></span> Loading...</div></div>
+</div>
+
+<!-- TOAST CONTAINER -->
+<div class="toast-container" id="toast-container"></div>
+
+<script>
+let quarters=[], nextQ='', pipelineData={}, allGroups=[];
+let pipelineRefreshInterval=null;
+
+function gv(id){return document.getElementById(id)?.value||''}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+
+function toast(msg, type='info', duration=8000){
+  const c=document.getElementById('toast-container');
+  const t=document.createElement('div');
+  t.className=`toast t-${type}`;
+  const icon=type==='success'?'✅':type==='error'?'❌':'ℹ️';
+  t.innerHTML=`<span>${icon}</span><span>${esc(msg)}</span>`;
+  c.appendChild(t);
+  setTimeout(()=>t.remove(), duration);
+  // Browser notification
+  if(Notification.permission==='granted'){
+    new Notification('GeoInt Dashboard', {body:msg, icon:'/favicon.ico'});
+  }
+}
+
+function requestNotificationPermission(){
+  if(Notification.permission==='default'){
+    Notification.requestPermission();
+  }
+}
+
+function showPage(id,el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  if(el) el.classList.add('active');
+  if(id==='clients') loadClients();
+  if(id==='config') loadConfig();
+  if(id==='pipeline') {loadPipeline(); startPipelinePolling();}
+  else stopPipelinePolling();
+}
+
+function startPipelinePolling(){
+  stopPipelinePolling();
+  pipelineRefreshInterval=setInterval(loadPipeline, 15000);
+}
+function stopPipelinePolling(){
+  if(pipelineRefreshInterval) clearInterval(pipelineRefreshInterval);
+}
+
+// ── Pipeline board ────────────────────────────────────────────
+async function loadPipeline(){
+  const q=gv('pipe-quarter');
+  if(!q) return;
+
+  try{
+    const d=await(await fetch(`/api/pipeline/${q}`, {cache:'no-store'})).json();
+    if(d.error){return;}
+    pipelineData=d;
+    renderPipelineBoard(d);
+  }catch(e){
+    document.getElementById('na-title').textContent='Could not load pipeline status';
+  }
+}
+
+function renderPipelineBoard(d){
+  // ── Numbered step renderer ─────────────────────────────────
+  const q = gv('pipe-quarter');
+  const datasets = d.datasets || {};
+  const anyIngested = Object.values(datasets).some(ds=>ds.ingested);
+  const allIngested = Object.keys(datasets).length > 0 && Object.values(datasets).every(ds=>ds.ingested);
+  const anyDownloaded = d.downloaded_count > 0;
+
+  const steps = [
+    {
+      num: 1,
+      title: "Create Quarter Folder Structure",
+      desc: "Sets up all the folders on the server for this quarter. Done once — cannot be repeated.",
+      done: d.distro_exists === true,
+      locked: false,
+      doneOnce: true,
+      action: () => pipeAction('create_structure',{quarter:q},'pipe-t'),
+      actionLabel: "Create Structure",
+      actionIcon: "ti-folder-plus",
+    },
+    {
+      num: 2,
+      title: "Download Data from TomTom",
+      desc: "Downloads the quarterly datasets from TomTom. Additional datasets can be downloaded at any time.",
+      done: anyDownloaded,
+      locked: !d.distro_exists,
+      extra: true,
+      action: () => showDownloadModal(),
+      actionLabel: "Download Data",
+      actionIcon: "ti-download",
+      extraLabel: "Download additional dataset",
+    },
+    {
+      num: 3,
+      title: "Organise Data",
+      desc: "Sorts downloaded files into the correct client folders. Files stay compressed (.7z) — nothing is extracted.",
+      done: allIngested,
+      locked: !anyDownloaded,
+      action: () => pipeAction('ingest',{dry_run:false,quarter:q},'pipe-t'),
+      actionLabel: "Organise All Data",
+      actionIcon: "ti-check",
+    },
+    {
+      num: 4,
+      title: "Set Up Client Access",
+      desc: "Creates Nextcloud accounts and assigns each client access to their data folders. Clients can only see their own data. Once done, go to the Notifications page to email clients their login details.",
+      done: d.nc_provisioned === true,
+      locked: !allIngested,
+      action: () => pipeAction('provision',{dry_run:false,quarter:q},'pipe-t'),
+      actionLabel: "Set Up Client Access",
+      actionIcon: "ti-users",
+    },
+    {
+      num: 5,
+      title: "Push to SFTP Partners — Optional",
+      desc: "Uploads data to external partners (Tracker, Riskscape). Can be re-run at any time.",
+      done: false,
+      locked: !d.nc_provisioned,
+      alwaysOpen: true,
+      action: () => showPage('sftp', document.querySelectorAll('.nav-item')[7]),
+      actionLabel: "Go to SFTP Push",
+      actionIcon: "ti-cloud-upload",
+    },
+  ];
+
+  const stepsEl = document.getElementById('pipe-steps');
+  stepsEl.innerHTML = steps.map(s => {
+    const isDone    = s.done;
+    const isLocked  = s.locked && !s.alwaysOpen;
+    const isCurrent = !isDone && !isLocked;
+
+    let bg, border, numBg, numColor, titleColor, btnHtml = '';
+
+    if (isDone) {
+      bg='#f0fff8'; border='1px solid #9fe1cb'; numBg='#0f6e56'; numColor='#fff'; titleColor='#0f6e56';
+    } else if (isLocked) {
+      bg='#fafaf8'; border='1px solid #e8e8e4'; numBg='#e8e8e4'; numColor='#aaa'; titleColor='#aaa';
+    } else {
+      bg='#f0f7ff'; border='2px solid #185fa5'; numBg='#185fa5'; numColor='#fff'; titleColor='#185fa5';
+    }
+
+    if (!isLocked) {
+      const disabled = isDone && s.doneOnce ? 'disabled style="opacity:0.4;cursor:not-allowed"' : '';
+      const btnClass = isDone ? 'btn' : 'btn btn-primary';
+      const btnText  = isDone && s.doneOnce ? '✅ Already done' : s.actionLabel;
+      const actionMap = {
+        1: `pipeAction('create_structure',{quarter:'${q}'},'pipe-t')`,
+        2: `showDownloadModal()`,
+        3: `pipeAction('ingest',{dry_run:false,quarter:'${q}'},'pipe-t')`,
+        4: `pipeAction('provision',{dry_run:false,quarter:'${q}'},'pipe-t')`,
+        5: `pipeAction('notify',{dry_run:false,quarter:'${q}'},'pipe-t')`,
+        5: `showPage('sftp',document.querySelectorAll('.nav-item')[7])`,
+      };
+      btnHtml = `<button class="${btnClass}" ${disabled} onclick="${actionMap[s.num]}">
+        <i class="ti ${s.actionIcon}"></i> ${btnText}
+      </button>`;
+      if (s.extra) {
+        btnHtml += ` <button class="btn" onclick="showDownloadModal()">
+          <i class="ti ti-plus"></i> ${s.extraLabel}
+        </button>`;
+      }
+    }
+
+    const lockIcon = isLocked ? '<i class="ti ti-lock" style="color:#ccc;font-size:14px;margin-left:8px"></i>' : '';
+
+    return `<div style="display:flex;align-items:flex-start;gap:14px;padding:16px 20px;background:${bg};border:${border};border-radius:10px">
+      <div style="width:32px;height:32px;border-radius:50%;background:${numBg};color:${numColor};display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0;margin-top:2px">
+        ${isDone ? '✓' : s.num}
+      </div>
+      <div style="flex:1">
+        <div style="font-size:14px;font-weight:700;color:${titleColor};margin-bottom:3px">
+          Step ${s.num} — ${s.title}${lockIcon}
+        </div>
+        <div style="font-size:12px;color:${isLocked?'#bbb':'#666'};margin-bottom:${isLocked?'0':'10px'}">${s.desc}</div>
+        ${btnHtml}
+      </div>
+      ${isDone ? '<div style="font-size:20px;flex-shrink:0">✅</div>' : isLocked ? '<div style="font-size:20px;flex-shrink:0">🔒</div>' : '<div style="font-size:20px;flex-shrink:0">👉</div>'}
+    </div>`;
+  }).join('');
+
+  // Dataset summary
+  const total = d.total_datasets || 0;
+  const ingested = Object.values(datasets).filter(ds=>ds.ingested).length;
+  const downloaded = Object.values(datasets).filter(ds=>ds.downloaded).length;
+  const pending = Object.values(datasets).filter(ds=>!ds.downloaded && !ds.ingested).length;
+  document.getElementById('ds-summary').textContent =
+    `${ingested}/${total} organised · ${pending} pending`;
+
+  // Dataset cards
+  const grid = document.getElementById('dataset-grid');
+  if(!Object.keys(datasets).length){
+    grid.innerHTML='<p style="color:#888;font-size:13px">No datasets found in quarterly config</p>';
+    return;
+  }
+
+  grid.innerHTML = Object.values(datasets).map(ds => {
+    const state = ds.ingested ? 'ingested' : ds.active ? 'active' : ds.downloaded ? 'downloaded' : 'pending';
+    const icon  = ds.ingested ? '✅' : ds.active ? '⬇️' : ds.downloaded ? '📥' : '⏳';
+    const iconBg = ds.ingested ? 'ds-icon-ingested' : ds.active ? 'ds-icon-downloading' : ds.downloaded ? 'ds-icon-downloaded' : 'ds-icon-pending';
+    const statusText = ds.ingested ? 'Organised' : ds.active ? 'Downloading...' : ds.downloaded ? 'Ready to organise' : ds.is_subset ? 'Subset of '+ds.subset_of : 'Not downloaded';
+    const sizeText = ds.size ? ds.size : '';
+    const canIngest = ds.downloaded && !ds.ingested && !ds.active;
+    return `<div class="dataset-card ds-${state}" id="dscard-${ds.key}">
+      <div class="ds-header">
+        <div class="ds-icon ${iconBg}">${icon}</div>
+        <div class="ds-name">${ds.key}</div>
+      </div>
+      <div class="ds-status">${statusText}</div>
+      ${sizeText ? `<div class="ds-size">${sizeText}</div>` : ''}
+      ${canIngest ? `<div class="ds-actions"><button class="btn btn-sm btn-primary" onclick="ingestDataset('${ds.key}','${q}')"><i class="ti ti-check"></i> Organise this dataset</button></div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+async function ingestDataset(key, quarter){
+  // Show terminal
+  document.getElementById('pipe-terminal-card').style.display='block';
+  const term = document.getElementById('pipe-t');
+  term.innerHTML='';
+  term.style.display='block';
+
+  // Update card to show in-progress
+  const card = document.getElementById('dscard-'+key);
+  if(card) card.style.borderColor='#185fa5';
+
+  toast('Organising '+key+'...', 'info', 5000);
+
+  const {job_id} = await post('/api/run/ingest_dataset', {key, quarter});
+  const result = await pollJob(job_id, 'pipe-t');
+
+  if(result.status === 'done'){
+    toast(key+' organised successfully!', 'success', 8000);
+  } else {
+    toast(key+' failed — check output', 'error', 10000);
+  }
+
+  // Refresh pipeline status
+  setTimeout(loadPipeline, 2000);
+}
+
+async function pipeAction(action, body, termId){
+  document.getElementById('pipe-terminal-card').style.display='block';
+  document.getElementById(termId).innerHTML='';
+  const {job_id}=await post('/api/run/'+action, body);
+  const result=await pollJob(job_id, termId);
+  if(result.status==='done'){
+    toast(`${action} completed successfully`, 'success');
+    setTimeout(loadPipeline, 2000);
+  } else if(result.status==='error'){
+    toast(`${action} failed — check output`, 'error');
+  }
+}
+
+// ── Download modal ────────────────────────────────────────────
+function showDownloadModal(){
+  document.getElementById('dl-modal').style.display='flex';
+  document.getElementById('dl-t').style.display='none';
+  document.getElementById('dl-t').innerHTML='';
+  document.getElementById('dl-already-warn').style.display='none';
+  document.getElementById('dl-force').checked=false;
+  fillSelect('dl-quarter', quarters);
+  loadVersionForQuarter();
+  updateVersionDisplay();
+}
+function closeDlModal(){
+  document.getElementById('dl-modal').style.display='none';
+  // Reset footer for next use
+  document.querySelector('#dl-modal .modal-footer').innerHTML=
+    '<button class="btn" onclick="closeDlModal()">Cancel</button><button class="btn btn-primary" onclick="startDownload()"><i class="ti ti-download"></i> Start download</button>';
+}
+
+// Cache the parsed quarterly config for use in region/check lookups
+let _dlQuarterConfig = null;
+
+async function loadVersionForQuarter(){
+  const q=gv('dl-quarter');
+  if(!q) return;
+  _dlQuarterConfig = null;
+  try{
+    const d=await(await fetch('/api/config/quarterly/'+q)).json();
+    if(d.content){
+      // Parse base version (e.g. "2026.06" from "2026.06.003")
+      const match=d.content.match(/tomtom_version:\s*["']{0,1}([0-9]+\.[0-9]+)\.[0-9]+["']{0,1}/);
+      if(match){
+        document.getElementById('dl-version-base').value=match[1];
+      }
+      _dlQuarterConfig = d.content;
+    }
+  }catch(e){}
+  loadRegionsForProduct();
+}
+
+// Version suffix rules — enforced, not editable by user
+const VERSION_SUFFIX = {
+  MNR:   '003',   // MultiNet-R always ends in .003 or higher
+  MN:    '000',   // All other products always end in .000
+  MNSP:  '000',
+  MNPOI: '000',
+  MNAP:  '000',
+  MAPIT: '000',
+};
+const VERSION_NOTE = {
+  MNR:   'MultiNet-R versions end in .003 (or higher patch number). The suffix is set automatically.',
+  MN:    'MultiNet always ends in .000. This is fixed and cannot be changed.',
+  MNSP:  'Speed Profiles always end in .000. This is fixed and cannot be changed.',
+  MNPOI: 'Premium POI always ends in .000. This is fixed and cannot be changed.',
+  MNAP:  'Address Points always end in .000. This is fixed and cannot be changed.',
+  MAPIT: 'MapIT always ends in .000. This is fixed and cannot be changed.',
+};
+
+function updateVersionDisplay(){
+  const family  = gv('dl-family');
+  const base    = document.getElementById('dl-version-base').value.trim();
+  const suffix  = VERSION_SUFFIX[family] || '000';
+  const noteEl  = document.getElementById('dl-version-note');
+  const sfxEl   = document.getElementById('dl-version-suffix');
+
+  sfxEl.value   = suffix;
+  const full    = base ? `${base}.${suffix}` : '';
+  document.getElementById('dl-version').value = full;
+
+  noteEl.textContent = VERSION_NOTE[family] || '';
+  noteEl.style.color = family === 'MNR' ? '#185fa5' : '#0f6e56';
+}
+
+function loadRegionsForProduct(){
+  const family = gv('dl-family');
+  const regionSel = document.getElementById('dl-region');
+  const hintEl = document.getElementById('dl-region-hint');
+
+  if(!_dlQuarterConfig || !family){
+    regionSel.innerHTML='<option value="MEA">MEA</option>';
+    return;
+  }
+
+  // Parse datasets from YAML to find regions for this family
+  // Look for lines like:  family: MNR  followed by  region: MEA
+  const regionSet = new Set();
+  const lines = _dlQuarterConfig.split('\n');
+  let inDataset=false, curFamily='', curRegion='';
+
+  for(const line of lines){
+    const trimmed = line.trim();
+    if(trimmed.endsWith(':') && !trimmed.startsWith('#') && line.match(/^\s{2}\w/)){
+      // New dataset block — save previous
+      if(curFamily && curRegion) regionSet.add(curFamily+'|'+curRegion);
+      curFamily=''; curRegion=''; inDataset=true;
+    }
+    if(inDataset){
+      const fm = trimmed.match(/^family:\s*(.+)$/);
+      if(fm) curFamily = fm[1].trim().replace(/['"]/g,'');
+      const rm = trimmed.match(/^region:\s*(.+)$/);
+      if(rm) curRegion = rm[1].trim().replace(/['"]/g,'');
+    }
+  }
+  // Save last
+  if(curFamily && curRegion) regionSet.add(curFamily+'|'+curRegion);
+
+  // Filter to selected family, deduplicate regions
+  const regions = [...new Set(
+    [...regionSet]
+      .filter(r=>r.startsWith(family+'|'))
+      .map(r=>r.split('|')[1])
+  )];
+
+  if(regions.length===0){
+    // Fallback to all known regions
+    const allRegions=['MEA','EUR','NAM','LAM','SEA','CAS','IND','OCE','ISR','S_O'];
+    regionSel.innerHTML=allRegions.map(r=>`<option value="${r}">${r}</option>`).join('');
+    hintEl.textContent='All available regions shown — select the one you need.';
+  } else {
+    regionSel.innerHTML=regions.map(r=>`<option value="${r}">${r}</option>`).join('');
+    hintEl.textContent=`${regions.length} region(s) configured for ${family} in this quarter.`;
+  }
+
+  updateVersionDisplay();
+  checkAlreadyDownloaded();
+}
+
+async function checkAlreadyDownloaded(){
+  const family  = gv('dl-family');
+  const quarter = gv('dl-quarter');
+  const warnEl  = document.getElementById('dl-already-warn');
+  const infoEl  = document.getElementById('dl-info-note');
+  const detailEl= document.getElementById('dl-already-detail');
+  const forceEl = document.getElementById('dl-force');
+
+  if(!family||!quarter||!pipelineData.datasets) {
+    warnEl.style.display='none'; infoEl.style.display='block'; return;
+  }
+
+  // Find any dataset in the pipeline that matches this family and is downloaded
+  const familyMap={MNR:'MNR',MN:'MN',MNSP:'SP',MNPOI:'POI',MNAP:'APT'};
+  const prefix=familyMap[family]||family;
+  const region = gv('dl-region');
+  const matching=Object.values(pipelineData.datasets||{}).filter(ds=>
+    ds.family===family &&
+    (!region || ds.region===region) &&
+    ds.downloaded && !ds.is_subset
+  );
+
+  if(matching.length>0){
+    const ds=matching[0];
+    detailEl.textContent=`Found: ${ds.folder||ds.key} (${ds.size||'size unknown'})`;
+    warnEl.style.display='block';
+    infoEl.style.display='none';
+    forceEl.checked=false;
+  } else {
+    warnEl.style.display='none';
+    infoEl.style.display='block';
+  }
+}
+
+function showDlStatus(msg, type='info'){
+  const el=document.getElementById('dl-status-msg');
+  const c={info:{bg:'#e6f1fb',color:'#0c447c',border:'#b5d4f4'},success:{bg:'#e1f5ee',color:'#085041',border:'#9fe1cb'},error:{bg:'#fcebeb',color:'#791f1f',border:'#f5b5b5'},warn:{bg:'#faeeda',color:'#633806',border:'#fac775'}};
+  const s=c[type]||c.info;
+  el.style.display='block';el.style.background=s.bg;el.style.color=s.color;el.style.border='1px solid '+s.border;
+  el.innerHTML=msg;
+}
+
+async function startDownload(){
+  const family  = gv('dl-family');
+  const quarter = gv('dl-quarter');
+  const region  = gv('dl-region');
+  const version = document.getElementById('dl-version').value.trim();
+  const force   = document.getElementById('dl-force').checked;
+  const warnEl  = document.getElementById('dl-already-warn');
+  const vbase   = document.getElementById('dl-version-base').value.trim();
+
+  if(!vbase){
+    showDlStatus('<i class="ti ti-alert-triangle"></i> Please enter the version base (e.g. <strong>2026.06</strong>). Check the quarterly config or TomTom release email.','warn');
+    return;
+  }
+  if(warnEl.style.display!=='none'&&!force){
+    showDlStatus('<i class="ti ti-alert-triangle"></i> <strong>This product is already downloaded.</strong> Tick the checkbox to confirm you want to download it again.','warn');
+    return;
+  }
+
+  showDlStatus('<span class="spinner"></span> &nbsp;Starting '+family+' '+region+' download for '+quarter+'...','info');
+  document.getElementById('dl-t').innerHTML='';
+
+  const resp=await post('/api/run/download',{family,quarter,version,region,force});
+  if(!resp.job_id){
+    showDlStatus('❌ <strong>Could not start download.</strong> Error: '+(resp.message||'unknown error'),'error');
+    return;
+  }
+
+  showDlStatus(
+    '✅ <strong>'+family+' '+region+' download started.</strong><br>'+
+    'Running in the background — you can close this window. '+
+    'An email will be sent to <strong>support@geoint.africa</strong> when it completes.<br>'+
+    '<span style="font-size:11px;display:block;margin-top:4px">Version: '+version+' &middot; Quarter: '+quarter+'</span>',
+    'success'
+  );
+  // Replace footer — hide Start button, show only Close
+  document.querySelector('#dl-modal .modal-footer').innerHTML=
+    '<button class="btn btn-primary" onclick="closeDlModal()"><i class="ti ti-x"></i> Close</button>';
+  toast(family+' '+region+' download started','success',10000);
+
+  pollJob(resp.job_id,'dl-t').then(result=>{
+    if(result.status==='done'){
+      showDlStatus('✅ <strong>Download complete!</strong> Go to Pipeline and click <strong>Organise files</strong> when all downloads are done.','success');
+      toast(family+' '+region+' download complete!','success',10000);
+      loadPipeline();
+    } else {
+      showDlStatus('❌ <strong>Download failed.</strong> Check the output below for details.','error');
+    }
+  });
+}
+
+// ── Helpers ───────────────────────────────────────────────────
+function colorLine(l){
+  if(/\[OK\]|✅|Copied|Mounted|complete|done|Created|Saved|successfully/i.test(l)) return `<span class="t-ok">${esc(l)}</span>`;
+  if(/\[ERROR\]|❌|Error|FAIL|failed/i.test(l)) return `<span class="t-err">${esc(l)}</span>`;
+  if(/\[WARN\]|⚠|Warning|missing|skip|warn/i.test(l)) return `<span class="t-warn">${esc(l)}</span>`;
+  if(/━━━|\[INFO\]|Starting|Running|Phase/i.test(l)) return `<span class="t-info">${esc(l)}</span>`;
+  return esc(l);
+}
+
+async function pollJob(jobId, termId){
+  const term=document.getElementById(termId);
+  term.style.display='block';
+  let last=0;
+  return new Promise(res=>{
+    const iv=setInterval(async()=>{
+      try{
+        const d=await(await fetch('/api/job/'+jobId)).json();
+        if(d.output&&d.output.length>last){
+          d.output.slice(last).forEach(l=>{term.innerHTML+=colorLine(l)+'\n';});
+          term.scrollTop=term.scrollHeight;
+          last=d.output.length;
+        }
+        if(d.status==='done'||d.status==='error'){clearInterval(iv);res(d);}
+      }catch(e){clearInterval(iv);res({status:'error'});}
+    },800);
+  });
+}
+
+async function post(url,body={}){
+  return(await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})).json();
+}
+
+async function quickAction(action,termId){
+  document.getElementById('qa-wrap').style.display='block';
+  document.getElementById(termId).innerHTML='';
+  const {job_id}=await post('/api/run/'+action,{});
+  await pollJob(job_id,termId);
+}
+
+async function toolRun(action,termId){
+  document.getElementById(termId).innerHTML='';
+  const {job_id}=await post('/api/run/'+action,{});
+  await pollJob(job_id,termId);
+}
+
+async function testEmail(){
+  const el=document.getElementById('email-result');
+  el.innerHTML='<span class="spinner"></span> Sending...';
+  const d=await post('/api/notify/test',{});
+  el.innerHTML=d.ok?'✅ Email sent to support@geoint.africa':'❌ Failed: '+esc(d.message);
+}
+
+function fillSelect(id, options){
+  const el=document.getElementById(id);
+  if(!el) return;
+  const cur=el.value;
+  el.innerHTML=options.map(q=>`<option value="${q}">${q}</option>`).join('');
+  // Restore previous value silently — do NOT trigger change event
+  if(cur&&options.includes(cur)){
+    el.value=cur;
+  } else if(options.length){
+    el.value=options[0];
+  }
+  // Note: setting .value directly does NOT fire the change event
+  // Only user interaction fires change — so no loadNotifications triggered here
+}
+
+function fillAllSelects(qs){
+  ['pipe-quarter','gen-q','yaml-q','dl-quarter','cleanup-quarter'].forEach(id=>fillSelect(id,qs));
+}
+
+async function loadQuarterData(){
+  const d=await(await fetch('/api/quarters', {cache:'no-store'})).json();
+  quarters=d.quarters||[];
+  nextQ=d.next||'';
+  fillAllSelects(quarters);
+  return d;
+}
+
+async function loadStatus(){
+  const s=await(await fetch('/api/status', {cache:'no-store'})).json();
+  const svcs=[['Apache',s.apache2],['MariaDB',s.mariadb],['Redis',s.redis_server],['Nextcloud',s.nextcloud],['Refresh agent',s.nextcloud_refresh]];
+  document.getElementById('svc-list').innerHTML=svcs.map(([n,ok])=>`
+    <div class="svc-row">
+      <span style="display:flex;align-items:center;gap:8px;font-size:13px"><div class="dot ${ok?'dot-ok':'dot-err'}"></div>${n}</span>
+      <span class="badge ${ok?'b-ok':'b-err'}">${ok?'running':'stopped'}</span>
+    </div>`).join('');
+  const nc=document.getElementById('m-nc');
+  nc.querySelector('.metric-value').textContent=s.nextcloud?'Online':'Offline';
+  nc.querySelector('.metric-sub').textContent=s.nc_version?'v'+s.nc_version:'';
+  nc.className='metric '+(s.nextcloud?'m-ok':'m-err');
+  document.getElementById('mv-clients').textContent=s.client_count||'—';
+  document.getElementById('mv-disk').textContent=s.disk_used||'—';
+  document.getElementById('mv-diskfree').textContent=s.disk_avail?s.disk_avail+' free':'';
+  const ag=document.getElementById('m-ag');
+  ag.querySelector('.metric-value').textContent=s.nextcloud_refresh?'Running':'Stopped';
+  ag.className='metric '+(s.nextcloud_refresh?'m-ok':'m-warn');
+  if(s.nc_url) document.getElementById('nc-link').href=s.nc_url;
+
+  const mf=await(await fetch('/api/mapflow', {cache:'no-store'})).json();
+  document.getElementById('mv-mf').textContent=mf.running?'Active':'Idle';
+  document.getElementById('m-mf').className='metric '+(mf.running?'m-warn':'');
+  document.getElementById('mv-mfsub').textContent=mf.running?mf.processes.length+' process(es)':mf.downloads.length+' folder(s)';
+}
+
+async function loadClients(){
+  document.getElementById('client-grid').innerHTML='<div style="color:#888;font-size:13px"><span class="spinner"></span> Loading...</div>';
+  const clients=await(await fetch('/api/clients', {cache:'no-store'})).json();
+  if(!clients.length){document.getElementById('client-grid').innerHTML='<p style="color:#888;font-size:13px">No clients found</p>';return;}
+  document.getElementById('client-grid').innerHTML=clients.map(c=>{
+    const ini=c.display.split(/[_\s]/).slice(0,2).map(w=>w[0]?.toUpperCase()||'').join('');
+    const seen=c.last_seen&&c.last_seen!=='never'?new Date(c.last_seen).toLocaleDateString():'Never';
+    return`<div class="client-card">
+      <div class="avatar">${ini}</div>
+      <h3 style="font-size:13px;font-weight:600;margin-bottom:2px">${esc(c.display)}</h3>
+      <p style="font-size:11px;color:#888">${esc(c.username)}</p>
+      <p style="font-size:11px;color:#aaa;margin-top:2px">Last login: ${seen}</p>
+      <div class="groups-list">${(c.groups||[]).map(g=>`<span class="group-tag">${esc(g)}</span>`).join('')}</div>
+      <div style="display:flex;gap:6px;margin-top:10px">
+        ${c.enabled
+          ?`<button class="btn btn-danger btn-sm" onclick="disableClient('${esc(c.username)}')"><i class="ti ti-user-off"></i> Disable</button>`
+          :`<button class="btn btn-success btn-sm" onclick="enableClient('${esc(c.username)}')"><i class="ti ti-user-check"></i> Enable</button>`}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function disableClient(u){if(!confirm(`Disable ${u}?`))return;await post('/api/clients/disable',{username:u});loadClients();toast(`${u} disabled`,'info');}
+async function enableClient(u){await post('/api/clients/enable',{username:u});loadClients();toast(`${u} enabled`,'success');}
+
+async function openAddClient(){
+  document.getElementById('add-modal').style.display='flex';
+  document.getElementById('ac-name').value='';
+  document.getElementById('ac-user').value='';
+  document.getElementById('ac-pass').value='';
+  document.getElementById('ac-t').style.display='none';
+  document.getElementById('ac-t').innerHTML='';
+  document.getElementById('ac-custom-block').style.display='none';
+  document.getElementById('ac-custom-name').value='';
+  try{
+    const r=await fetch('/api/clients/available-datasets');
+    const d=await r.json();
+    window._acDatasets=d.datasets; window._acQuarter=d.quarter;
+    const el=document.getElementById('ac-datasets');
+    el.innerHTML=d.datasets.map(ds=>{
+      const badge=ds.custom
+        ?'<span style="font-size:10px;background:#e8f5e9;color:#2e7d32;padding:1px 5px;border-radius:3px;margin-left:4px">custom</span>'
+        :ds.available
+          ?'<span style="font-size:10px;background:#e3f2fd;color:#1565c0;padding:1px 5px;border-radius:3px;margin-left:4px">ready</span>'
+          :'<span style="font-size:10px;background:#f5f5f5;color:#999;padding:1px 5px;border-radius:3px;margin-left:4px">not ingested</span>';
+      return`<label style="display:flex;align-items:center;gap:8px;padding:3px 0;cursor:pointer${!ds.available&&!ds.custom?';opacity:0.45':''}">
+        <input type="checkbox" value="${esc(ds.key)}" data-path="${esc(ds.path)}" data-label="${esc(ds.label)}" data-custom="${ds.custom||false}"
+          ${!ds.available&&!ds.custom?'disabled':''}
+          onchange="checkCustomDs()">
+        ${esc(ds.label)}${badge}</label>`;
+    }).join('')+'<hr style="border:none;border-top:1px solid #eee;margin:6px 0"><label style="display:flex;align-items:center;gap:8px;padding:3px 0;cursor:pointer"><input type="checkbox" id="ac-new-custom" onchange="checkCustomDs()"><i class="ti ti-folder-plus" style="color:#f59e0b"></i><span style="color:#d97706;font-weight:500">New custom folder...</span></label>';
+  }catch(e){document.getElementById('ac-datasets').innerHTML='<span style="color:#e24b4a">Failed to load datasets</span>';}
+}
+function closeModal(){document.getElementById('add-modal').style.display='none';}
+function autoUsername(){
+  document.getElementById('ac-user').value=document.getElementById('ac-name').value.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
+}
+function genPass(){
+  const c='abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$';
+  document.getElementById('ac-pass').value=Array.from({length:16},()=>c[Math.floor(Math.random()*c.length)]).join('');
+}
+function checkCustomDs(){
+  const nc=document.getElementById('ac-new-custom');
+  document.getElementById('ac-custom-block').style.display=(nc&&nc.checked)?'block':'none';
+}
+function updateCustomPreview(){
+  const v=document.getElementById('ac-custom-name').value.trim();
+  const s=v.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
+  document.getElementById('ac-custom-preview').textContent=s?`Folder: /mnt/data/custom/${s}`:'';
+}
+async function submitAddClient(){
+  const display=document.getElementById('ac-name').value.trim();
+  const username=document.getElementById('ac-user').value.trim();
+  const password=document.getElementById('ac-pass').value.trim()||undefined;
+  if(!display||!username){alert('Display name and username are required.');return;}
+  const datasets=[];
+  document.querySelectorAll('#ac-datasets input[type=checkbox]:checked:not(#ac-new-custom)').forEach(el=>{
+    datasets.push({key:el.value,label:el.dataset.label,path:el.dataset.path,custom:el.dataset.custom==='true'});
+  });
+  const nc=document.getElementById('ac-new-custom');
+  if(nc&&nc.checked){
+    const fn=document.getElementById('ac-custom-name').value.trim();
+    if(!fn){alert('Please enter a name for the custom folder.');return;}
+    const slug=fn.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
+    datasets.push({key:`CUSTOM_${slug.toUpperCase()}`,label:fn,path:'',custom:true,folder_name:fn});
+  }
+  document.getElementById('ac-t').style.display='block';
+  document.getElementById('ac-t').innerHTML='';
+  const {job_id}=await post('/api/clients/add',{display_name:display,username,password,datasets,quarter:window._acQuarter||'Q2_2026'});
+  const result=await pollJob(job_id,'ac-t');
+  if(result.status==='done'){
+    loadClients();
+    toast(`Client ${username} created`,'success');
+    // Replace footer with success state
+    document.querySelector('#add-modal .modal-footer').innerHTML=`
+      <div style="display:flex;align-items:center;gap:10px;width:100%">
+        <span style="color:#2e7d32;font-weight:600;font-size:14px">✅ Client created successfully</span>
+        <button class="btn btn-primary" style="margin-left:auto" onclick="closeModal()">Close</button>
+      </div>`;
+  }
+}
+
+// ── Config ────────────────────────────────────────────────────
+function renderEnvEditor(entries,edId){
+  const el=document.getElementById(edId);
+  el.innerHTML=entries.map((e,i)=>{
+    if(e.type==='comment') return`<div class="env-cmt">${esc(e.raw||'')}</div>`;
+    const secret=/PASSWORD|TOKEN|PASS|SECRET/i.test(e.key||'');
+    return`<div class="env-row">
+      <input class="ekey" value="${esc(e.key||'')}" data-i="${i}" data-f="key" onchange="envCh('${edId}',this)">
+      <input class="eval" type="${secret?'password':'text'}" value="${esc(e.value||'')}" data-i="${i}" data-f="value" onchange="envCh('${edId}',this)">
+    </div>`;
+  }).join('');
+  el._data=entries;
+}
+function envCh(edId,input){const el=document.getElementById(edId);el._data[+input.dataset.i][input.dataset.f]=input.value;}
+
+async function loadConfig(){
+  const[envData,folData]=await Promise.all([
+    fetch('/api/config/env').then(r=>r.json()),
+    fetch('/api/config/folders').then(r=>r.json())
+  ]);
+  renderEnvEditor(envData,'env-ed');
+  renderEnvEditor(folData,'fol-ed');
+  await loadQuarterData();
+}
+async function saveEnv(){
+  await post('/api/config/env',{entries:document.getElementById('env-ed')._data});
+  showSaved('env-msg');
+}
+async function genEnvPreview(){
+  const q=gv('gen-q');
+  document.getElementById('gen-t').innerHTML='';
+  const {job_id}=await post('/api/run/generate_env',{quarter:q,dry_run:true});
+  await pollJob(job_id,'gen-t');
+}
+async function genEnvNow(){
+  const q=gv('gen-q');
+  document.getElementById('gen-t').innerHTML='';
+  const {job_id}=await post('/api/run/generate_env',{quarter:q,dry_run:false});
+  await pollJob(job_id,'gen-t');
+  setTimeout(async()=>{
+    const d=await(await fetch('/api/config/folders', {cache:'no-store'})).json();
+    renderEnvEditor(d,'fol-ed');
+    showSaved('fol-msg');
+    toast('.folders.env regenerated from YAML','success');
+  },1000);
+}
+async function loadYaml(){
+  const q=gv('yaml-q');
+  if(!q) return;
+  const d=await(await fetch('/api/config/quarterly/'+q)).json();
+  document.getElementById('yaml-ed').value=d.content||'';
+}
+async function saveYaml(){
+  const q=gv('yaml-q');
+  await post('/api/config/quarterly/'+q,{content:document.getElementById('yaml-ed').value});
+  showSaved('yaml-msg');
+  toast('Quarterly config saved','success');
+}
+function showSaved(id){const el=document.getElementById(id);el.style.display='inline';setTimeout(()=>el.style.display='none',2500);}
+
+let _suppressNotifyReload = false;
+async function loadAll(){
+  _suppressNotifyReload = true;
+  await Promise.all([loadStatus(), loadQuarterData()]);
+  _suppressNotifyReload = false;
+}
+
+// Init
+requestNotificationPermission();
+loadAll().then(initNotifyQuarterSelect);
+setInterval(loadAll, 30000);
+
+// ── Notifications ─────────────────────────────────────────────
+function initNotifyQuarterSelect(){
+  const sel = document.getElementById('notify-quarter');
+  if(sel && !sel._handlerSet){
+    sel.addEventListener('change', ()=>{ if(!_suppressNotifyReload) loadNotifications(); });
+    sel._handlerSet = true;
+  }
+}
+
+async function loadCleanupCandidates(){
+  const q = gv('cleanup-quarter');
+  if(!q){ toast('Select a quarter first', 'warn'); return; }
+  document.getElementById('cleanup-list').style.display='none';
+  document.getElementById('cleanup-t').style.display='none';
+
+  const d = await (await fetch(`/api/cleanup/downloads/${q}`, {cache:'no-store'})).json();
+
+  if(d.error){
+    toast(d.error, 'error');
+    return;
+  }
+
+  if(!d.candidates || d.candidates.length === 0){
+    toast('No download folders found', 'info');
+    return;
+  }
+
+  const items = d.candidates.map(f => {
+    const safe = f.safe;
+    const bg   = safe ? '#f0fff8' : '#fafaf8';
+    const border = safe ? '1px solid #9fe1cb' : '1px solid #e8e8e4';
+    return `<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:8px;margin-bottom:8px;background:${bg};border:${border}">
+      <input type="checkbox" id="chk-${esc(f.name)}" value="${esc(f.path)}" ${safe ? 'checked' : 'disabled'}
+        style="width:16px;height:16px;cursor:${safe?'pointer':'not-allowed'}">
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:500">${esc(f.name)}</div>
+        <div style="font-size:11px;color:#888;margin-top:2px">${esc(f.dest_hint)}</div>
+      </div>
+      <div style="font-size:13px;font-weight:600;color:${safe?'#0f6e56':'#aaa'}">${esc(f.size)}</div>
+      <span class="badge ${safe?'b-ok':'b-warn'}">${safe?'Safe to delete':'Not yet ingested'}</span>
+    </div>`;
+  }).join('');
+
+  document.getElementById('cleanup-items').innerHTML = items;
+  document.getElementById('cleanup-list').style.display='block';
+
+  // Show total space that can be freed
+  const safeItems = d.safe_to_delete || [];
+  document.getElementById('cleanup-space-hint').textContent =
+    `${safeItems.length} folder(s) selected — check disk after deletion`;
+}
+
+async function runCleanup(){
+  const q = gv('cleanup-quarter');
+  // Collect checked folders
+  const checkboxes = document.querySelectorAll('#cleanup-items input[type=checkbox]:checked');
+  const folders = [...checkboxes].map(cb => cb.value);
+
+  if(folders.length === 0){
+    toast('No folders selected', 'warn');
+    return;
+  }
+
+  if(!confirm(`Delete ${folders.length} folder(s) from the downloads directory?\n\nThis cannot be undone. The data will need to be re-downloaded from TomTom if needed again.`)){
+    return;
+  }
+
+  document.getElementById('cleanup-t').innerHTML='';
+  const {job_id} = await post('/api/cleanup/downloads', {folders, quarter: q});
+  const result = await pollJob(job_id, 'cleanup-t');
+
+  if(result.status === 'done'){
+    toast('Cleanup complete — disk space freed', 'success', 8000);
+    loadCleanupCandidates(); // Refresh the list
+  }
+}
+
+async function loadNotifications(){
+  // Only reload if notifications page is active AND preview modal is closed
+  const _notifyPage = document.getElementById('page-notify');
+  if(!_notifyPage || !_notifyPage.classList.contains('active')) return;
+  const _modal = document.getElementById('email-preview-modal');
+  if(_modal && _modal.style.display !== 'none'){ console.log('loadNotifications blocked — modal open'); return; }
+  console.log('loadNotifications proceeding — modal display:', _modal ? _modal.style.display : 'not found');
+  fillSelect('notify-quarter', quarters);
+  const q = gv('notify-quarter') || (quarters.length ? quarters[0] : '');
+  if(!q) return;
+  document.getElementById('notify-quarter').value = q;
+  document.getElementById('notify-table').innerHTML = '<div style="color:#888;font-size:13px"><span class="spinner"></span> Loading...</div>';
+  try{
+    const data = await (await fetch('/api/notifications/'+q)).json();
+    renderNotifyTable(data, q);
+  }catch(e){
+    document.getElementById('notify-table').innerHTML = '<p style="color:#e24b4a">Failed to load: '+e.message+'</p>';
+  }
+}
+
+function renderNotifyTable(data, q){
+  console.log('renderNotifyTable called from:', new Error().stack.split('\n')[2]);
+  const clients = Object.values(data);
+  const total   = clients.length;
+  const sent    = clients.filter(c=>c.sent).length;
+  document.getElementById('nm-total').textContent   = total;
+  document.getElementById('nm-sent').textContent    = sent;
+  document.getElementById('nm-pending').textContent = total - sent;
+
+  if(!total){
+    document.getElementById('notify-table').innerHTML = '<p style="color:#888;font-size:13px">No clients found.</p>';
+    return;
+  }
+
+  const rows = clients.map(c=>{
+    const status = c.sent
+      ? `<span class="badge b-ok">✅ Sent ${esc(c.sent_at)}</span>`
+      : `<span class="badge b-warn">⏳ Not sent</span>`;
+    const datasets = (c.datasets||[]).map(d=>`<span class="group-tag">${esc(d)}</span>`).join(' ');
+    const actions = `
+      <button class="btn btn-sm" onclick="showJiraMessage('${esc(c.client)}','${q}')">
+        <i class="ti ti-copy"></i> Jira message
+      </button>
+      ${c.sent
+        ? `<button class="btn btn-sm" onclick="sendOne('${esc(c.client)}','${q}',true)"><i class="ti ti-mail-forward"></i> Re-send</button>`
+        : `<button class="btn btn-success btn-sm" onclick="sendOne('${esc(c.client)}','${q}',false)"><i class="ti ti-mail"></i> Send</button>`
+      }`;
+    return `<tr>
+      <td style="padding:10px 12px;font-weight:500">${esc(c.client)}</td>
+      <td style="padding:10px 12px;font-family:monospace;font-size:12px;color:#888">${esc(c.username)}</td>
+      <td style="padding:10px 12px"><div class="groups-list">${datasets}</div></td>
+      <td style="padding:10px 12px">${status}</td>
+      <td style="padding:10px 12px"><div style="display:flex;gap:6px;flex-wrap:wrap">${actions}</div></td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('notify-table').innerHTML = `
+    <table style="width:100%;border-collapse:collapse">
+      <thead>
+        <tr style="border-bottom:2px solid #e8e8e4;font-size:11px;text-transform:uppercase;letter-spacing:0.05em;color:#888">
+          <th style="padding:8px 12px;text-align:left">Client</th>
+          <th style="padding:8px 12px;text-align:left">Username</th>
+          <th style="padding:8px 12px;text-align:left">Datasets</th>
+          <th style="padding:8px 12px;text-align:left">Status</th>
+          <th style="padding:8px 12px;text-align:left">Actions</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+async function sendOne(client, quarter, force){
+  const resp = await post('/api/notifications/send', {client, quarter, force});
+  if(resp.ok){
+    toast('Email sent for '+client, 'success', 8000);
+    // Update just this row's status badge and button — don't re-render whole table
+    const rows = document.querySelectorAll('#notify-table tbody tr');
+    rows.forEach(row => {
+      if(row.cells[0] && row.cells[0].textContent.trim() === client){
+        // Update status badge
+        const now = new Date().toLocaleString('en-ZA',{hour12:false}).slice(0,16).replace('T',' ');
+        row.cells[3].innerHTML = `<span class="badge b-ok">✅ Sent ${now}</span>`;
+        // Update button — keep Preview, change Send to Re-send
+        const btns = row.cells[4].querySelectorAll('button');
+        btns.forEach(b => {
+          if(b.textContent.includes('Send') && !b.textContent.includes('Re-send')){
+            b.className = 'btn btn-sm';
+            b.innerHTML = '<i class="ti ti-mail-forward"></i> Re-send';
+            b.onclick = () => sendOne(client, quarter, true);
+          }
+        });
+        // Update summary counts
+        const sent = document.querySelectorAll('#notify-table .b-ok').length;
+        const total = parseInt(document.getElementById('nm-total').textContent)||0;
+        document.getElementById('nm-sent').textContent = sent;
+        document.getElementById('nm-pending').textContent = total - sent;
+      }
+    });
+  } else if(resp.error === 'already_sent'){
+    toast(client+' was already notified. Use Re-send to send again.', 'info', 8000);
+  } else {
+    toast('Failed: '+(resp.message||resp.error||'unknown'), 'error', 10000);
+  }
+}
+
+async function sendAllNotifications(force){
+  const q = gv('notify-quarter');
+  const t = document.getElementById('notify-t');
+  t.style.display='block'; t.innerHTML='';
+  toast(force?'Re-sending all clients...':'Sending pending clients...', 'info', 5000);
+  const {job_id} = await post('/api/notifications/send_all', {quarter:q, force});
+  const result = await pollJob(job_id, 'notify-t');
+  if(result.status==='done'){
+    toast('All notifications sent!', 'success', 10000);
+    loadNotifications();
+  }
+}
+
+async function previewEmail(client, quarter){
+  document.getElementById('preview-subject').textContent = 'Loading...';
+  document.getElementById('preview-frame').innerHTML = '<div style="padding:20px;color:#888">Loading...</div>';
+  document.getElementById('email-preview-modal').style.display='flex';
+  const d = await (await fetch(`/api/notifications/preview/${quarter}/${encodeURIComponent(client)}`, {cache:'no-store'})).json();
+  document.getElementById('preview-subject').textContent = 'Subject: '+d.subject;
+  document.getElementById('preview-frame').innerHTML = d.html;
+  document.getElementById('preview-send-btn').onclick = ()=>{ closeEmailPreview(); sendOne(client, quarter, false); };
+}
+
+async function showJiraMessage(client, quarter){
+  document.getElementById('jira-modal').style.display='flex';
+  document.getElementById('jira-text').value='Loading...';
+  document.getElementById('jira-ref').textContent='';
+  try{
+    const d = await (await fetch(
+      `/api/notifications/jira/${quarter}/${encodeURIComponent(client)}`,
+      {cache:'no-store'}
+    )).json();
+    document.getElementById('jira-text').value = d.message || '';
+    document.getElementById('jira-ref').textContent = '';
+  }catch(e){
+    document.getElementById('jira-text').value = 'Failed to load message: '+e.message;
+  }
+}
+
+function closeJiraModal(){
+  document.getElementById('jira-modal').style.display='none';
+}
+
+async function copyJiraMessage(){
+  const text = document.getElementById('jira-text').value;
+  try{
+    await navigator.clipboard.writeText(text);
+    toast('Copied to clipboard!', 'success', 3000);
+  }catch(e){
+    // Fallback for older browsers
+    document.getElementById('jira-text').select();
+    document.execCommand('copy');
+    toast('Copied to clipboard!', 'success', 3000);
+  }
+}
+
+function closeEmailPreview(){
+  document.getElementById('email-preview-modal').style.display='none';
+  console.log('Modal closed — stack:', new Error().stack);
+}
+
+
+async function loadUploads() {
+  document.getElementById('uploads-list').innerHTML = '<div style="color:#888;font-size:13px"><span class="spinner"></span> Loading...</div>';
+  try {
+    const r = await fetch('/api/uploads/clients');
+    const data = await r.json();
+    const sel = document.getElementById('upload-client-select');
+    sel.innerHTML = '<option value="">— Select client —</option>';
+    data.forEach(c => { sel.innerHTML += `<option value="${c.username}">${c.display}</option>`; });
+    const clients = data.filter(c => c.file_count > 0);
+    if (!clients.length) {
+      document.getElementById('uploads-list').innerHTML = '<div class="card" style="color:#888;font-size:13px;text-align:center;padding:32px">No files uploaded yet. Use the form above to upload files for a client.</div>';
+      return;
+    }
+    let html = '';
+    for (const c of clients) {
+      html += `<div class="card" style="margin-bottom:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div><div style="font-size:14px;font-weight:700">${c.display}</div>
+          <div style="font-size:11px;color:#888;font-family:monospace">${c.folder}</div></div>
+          <span style="font-size:12px;padding:3px 10px;border-radius:20px;background:#e8f5e9;color:#2e7d32">${c.file_count} file${c.file_count!==1?'s':''}</span>
+        </div>
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+          <thead><tr style="border-bottom:1px solid #e8e8e4">
+            <th style="text-align:left;padding:5px 8px;color:#888;font-weight:500">Filename</th>
+            <th style="text-align:right;padding:5px 8px;color:#888;font-weight:500">Size</th>
+            <th style="text-align:right;padding:5px 8px;color:#888;font-weight:500">Modified</th>
+            <th style="text-align:center;padding:5px 8px;color:#888;font-weight:500">Action</th>
+          </tr></thead><tbody>`;
+      for (const f of c.files) {
+        const size = f.size>1048576?(f.size/1048576).toFixed(1)+' MB':f.size>1024?(f.size/1024).toFixed(1)+' KB':f.size+' B';
+        const mod = new Date(f.modified*1000).toLocaleDateString();
+        html += `<tr style="border-bottom:1px solid #f0f0ec">
+          <td style="padding:6px 8px;font-weight:500">${f.name}</td>
+          <td style="padding:6px 8px;text-align:right;color:#888">${size}</td>
+          <td style="padding:6px 8px;text-align:right;color:#888">${mod}</td>
+          <td style="padding:6px 8px;text-align:center">
+            <button class="btn upload-delete-btn" style="padding:3px 10px;font-size:11px;color:#c62828"
+              data-user="${c.username}" data-file="${f.name}">
+              <i class="ti ti-trash"></i> Delete
+            </button>
+            <button class="btn upload-rename-btn" style="padding:3px 10px;font-size:11px;margin-left:4px"
+              data-user="${c.username}" data-file="${f.name}">
+              <i class="ti ti-pencil"></i> Rename
+            </button>
+          </td></tr>`;
+      }
+      html += '</tbody></table></div>';
+    }
+    document.getElementById('uploads-list').innerHTML = html;
+    // Event delegation for upload actions
+    document.getElementById('uploads-list').querySelectorAll('.upload-delete-btn').forEach(btn => {
+      btn.addEventListener('click', function() { deleteUpload(this.dataset.user, this.dataset.file, this); });
+    });
+    document.getElementById('uploads-list').querySelectorAll('.upload-rename-btn').forEach(btn => {
+      btn.addEventListener('click', function() { renameUpload(this.dataset.user, this.dataset.file, this); });
+    });
+  } catch(e) {
+    document.getElementById('uploads-list').innerHTML = '<p style="color:#e24b4a">Failed: '+e.message+'</p>';
+  }
+}
+
+async function doUpload() {
+  const username = document.getElementById('upload-client-select').value;
+  const input = document.getElementById('upload-file-input');
+  const folderName = document.getElementById('upload-folder-name').value.trim();
+  if (!username) { alert('Please select a client.'); return; }
+  if (!folderName) { alert('Please enter a folder name.'); return; }
+  if (!input.files.length) { alert('Please select at least one file.'); return; }
+  const prog = document.getElementById('upload-progress');
+  const bar  = document.getElementById('upload-bar');
+  const stat = document.getElementById('upload-status');
+  prog.style.display = 'block'; bar.style.width = '10%'; stat.textContent = 'Uploading…';
+  const fd = new FormData();
+  fd.append('folder_name', folderName);
+  for (const f of input.files) fd.append('files', f);
+  const xhr = new XMLHttpRequest();
+  xhr.upload.onprogress = e => { if (e.lengthComputable) bar.style.width = Math.round(e.loaded/e.total*90)+'%'; };
+  xhr.onload = () => {
+    bar.style.width = '100%';
+    const d = JSON.parse(xhr.responseText);
+    stat.textContent = d.errors&&d.errors.length ? '⚠️ '+d.errors.join(', ') : '✅ Uploaded: '+d.saved.join(', ');
+    input.value = '';
+    setTimeout(() => { prog.style.display='none'; bar.style.width='0%'; }, 4000);
+    loadUploads();
+  };
+  xhr.onerror = () => { stat.textContent = '❌ Upload failed'; };
+  xhr.open('POST', '/api/uploads/upload/'+username);
+  xhr.send(fd);
+}
+
+async function deleteUpload(username, filename, btn) {
+  if (!confirm('Delete "'+filename+'" from '+username+'?')) return;
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
+  try {
+    const r = await fetch('/api/uploads/delete/'+username+'/'+encodeURIComponent(filename), {method:'DELETE'});
+    const d = await r.json();
+    if (d.ok) loadUploads();
+    else { btn.innerHTML = '❌'; setTimeout(()=>{btn.innerHTML='<i class="ti ti-trash"></i> Delete';btn.disabled=false;},2000); }
+  } catch(e) { btn.innerHTML = '❌'; btn.disabled=false; }
+}
+
+
+async function renameUpload(username, filename, btn) {
+  const newName = prompt('Rename "'+filename+'" to:', filename);
+  if (!newName || newName === filename) return;
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
+  try {
+    const r = await fetch('/api/uploads/rename/'+username, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({old_name: filename, new_name: newName})
+    });
+    const d = await r.json();
+    if (d.ok) { loadUploads(); }
+    else { alert('Error: '+d.error); btn.innerHTML='<i class="ti ti-pencil"></i> Rename'; btn.disabled=false; }
+  } catch(e) { btn.innerHTML='<i class="ti ti-pencil"></i> Rename'; btn.disabled=false; }
+}
+
+
+async function checkMapflowCache() {
+  const info = document.getElementById('mapflow-cache-info');
+  info.innerHTML = '<span class="spinner"></span> Checking...';
+  try {
+    const r = await fetch('/api/tools/mapflow-cache');
+    const d = await r.json();
+    info.innerHTML = d.folder_count > 0
+      ? `Found <strong>${d.folder_count} folder(s)</strong> using <strong>${d.total_size}</strong>`
+      : 'No cache folders found — nothing to delete.';
+    document.getElementById('mapflow-delete-btn').style.display = d.folder_count > 0 ? 'inline-flex' : 'none';
+  } catch(e) { info.innerHTML = '❌ Failed: ' + e.message; }
+}
+
+async function clearMapflowCache() {
+  if (!confirm('Delete all MapFlow client download cache folders?')) return;
+  const t = document.getElementById('mapflow-cache-t');
+  t.style.display = 'block'; t.innerHTML = '';
+  const {job_id} = await post('/api/tools/mapflow-cache-clear', {});
+  const result = await pollJob(job_id, 'mapflow-cache-t');
+  if (result.status === 'done') {
+    toast('MapFlow cache cleared', 'success', 8000);
+    document.getElementById('mapflow-delete-btn').style.display = 'none';
+    checkMapflowCache();
+  }
+}
+
+
+async function openNextQuarterWizard() {
+  document.getElementById('nq-modal').style.display = 'flex';
+  document.getElementById('nq-t').style.display = 'none';
+  document.getElementById('nq-t').innerHTML = '';
+  document.getElementById('nq-preview').innerHTML = '<div style="color:#888;font-size:13px"><span class="spinner"></span> Loading...</div>';
+  document.getElementById('nq-footer').innerHTML = '<button class="btn" onclick="closeNqModal()">Cancel</button><button class="btn btn-primary" id="nq-confirm-btn" onclick="runNextQuarter()"><i class="ti ti-player-play"></i> Create next quarter</button>';
+  try {
+    const r = await fetch('/api/wizard/next-quarter-preview');
+    _nqData = await r.json();
+    if (_nqData.error) { document.getElementById('nq-preview').innerHTML = '<p style="color:#e24b4a">'+_nqData.error+'</p>'; return; }
+    document.getElementById('nq-subtitle').textContent = 'Current: '+_nqData.current_quarter+' → Next: '+_nqData.next_quarter;
+    let html = '<div style="background:#f0f7ff;border:1px solid #b5d4f4;border-radius:8px;padding:14px;margin-bottom:12px">'
+      + '<div style="font-size:13px;font-weight:600;color:#185fa5;margin-bottom:8px">What will be created</div>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">'
+      + '<div><span style="color:#888">Quarter:</span> <strong>'+_nqData.next_quarter+'</strong></div>'
+      + '<div><span style="color:#888">Version:</span> <strong>'+_nqData.version+'</strong></div>'
+      + '<div style="grid-column:span 2"><span style="color:#888">Folder:</span> <code style="font-size:11px">'+_nqData.distro_folder+'</code></div>'
+      + '</div></div>'
+      + '<div style="font-size:12px;color:#666;margin-bottom:4px;font-weight:600">Steps that will run automatically:</div>'
+      + '<ol style="font-size:12px;color:#666;padding-left:18px;line-height:2">'+_nqData.steps.map(function(s){return '<li>'+s+'</li>';}).join('')+'</ol>';
+    if (_nqData.yaml_exists) html += '<div class="note n-warn" style="margin-top:10px"><i class="ti ti-alert-triangle"></i> '+_nqData.next_quarter+'.yaml already exists.</div>';
+    if (_nqData.distro_exists) html += '<div class="note n-warn" style="margin-top:6px"><i class="ti ti-alert-triangle"></i> Distribution folder already exists.</div>';
+    document.getElementById('nq-preview').innerHTML = html;
+  } catch(e) {
+    document.getElementById('nq-preview').innerHTML = '<p style="color:#e24b4a">Failed: '+e.message+'</p>';
+  }
+}
+
+var _nqData = {};
+
+async function runNextQuarter() {
+  if (!_nqData.next_quarter) return;
+  document.getElementById('nq-confirm-btn').disabled = true;
+  document.getElementById('nq-t').style.display = 'block';
+  document.getElementById('nq-t').innerHTML = '';
+  var res = await post('/api/wizard/create-next-quarter', {quarter: _nqData.next_quarter, version: _nqData.version});
+  var result = await pollJob(res.job_id, 'nq-t');
+  if (result.status === 'done') {
+    toast(_nqData.next_quarter+' created successfully!', 'success', 10000);
+    document.getElementById('nq-footer').innerHTML = '<div style="display:flex;align-items:center;gap:10px;width:100%"><span style="color:#2e7d32;font-weight:600">✅ '+_nqData.next_quarter+' is ready</span><button class="btn btn-primary" style="margin-left:auto" onclick="closeNqModal();showPage(&quot;pipeline&quot;,document.querySelectorAll(&quot;.nav-item&quot;)[1])"><i class="ti ti-player-play"></i> Go to Pipeline</button></div>';
+    loadQuarterData();
+  } else {
+    toast('Quarter creation failed — check output', 'error', 10000);
+    document.getElementById('nq-confirm-btn').disabled = false;
+  }
+}
+
+function closeNqModal() {
+  document.getElementById('nq-modal').style.display = 'none';
+}
+
+
+var sftpData = {};
+
+async function loadSftpStatus() {
+  document.getElementById('sftp-content').innerHTML = '<div style="color:#888;font-size:13px"><span class="spinner"></span> Loading...</div>';
+  try {
+    const r = await fetch('/api/sftp/status');
+    sftpData = await r.json();
+    renderSftp();
+  } catch(e) {
+    document.getElementById('sftp-content').innerHTML = '<p style="color:#e24b4a">Failed: '+e.message+'</p>';
+  }
+}
+
+function renderSftp() {
+  let html = '';
+  for (const [cid, cfg] of Object.entries(sftpData)) {
+    const pwOk = cfg.has_password;
+    html += '<div class="card" style="margin-bottom:16px">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:14px">'
+      + '<div><div style="font-size:16px;font-weight:700;margin-bottom:2px">'+cfg.label+'</div>'
+      + '<div style="font-size:12px;color:#888">'+cfg.user+'@'+cfg.host+':'+cfg.port+'</div></div>'
+      + '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
+      + '<span style="font-size:11px;padding:3px 10px;border-radius:20px;background:'+(pwOk?'#e8f5e9':'#fff3e0')+';color:'+(pwOk?'#2e7d32':'#e65100')+'">'+(pwOk?'🔑 Password set':'⚠️ No password')+'</span>'
+      + '<button class="btn" onclick="testSftp(&quot;'+cid+'&quot;,this)"><i class="ti ti-plug"></i> Test connection</button>'
+      + (cid === 'riskscape' ? '<button class="btn" onclick="pullSftp(&quot;'+cid+'&quot;)"><i class="ti ti-cloud-download"></i> Pull MapIT</button>' : '')
+      + '<button class="btn btn-primary" onclick="openPushModal(&quot;'+cid+'&quot;)" '+(pwOk?'':'disabled')+'><i class="ti ti-cloud-upload"></i> Push data</button>'
+      + '</div></div>'
+      + '<table style="width:100%;border-collapse:collapse;font-size:13px">'
+      + '<thead><tr style="border-bottom:1px solid #e8e8e4">'
+      + '<th style="text-align:left;padding:6px 8px;color:#888;font-weight:500">Dataset</th>'
+      + '<th style="text-align:left;padding:6px 8px;color:#888;font-weight:500">Local path</th>'
+      + '<th style="text-align:right;padding:6px 8px;color:#888;font-weight:500">Files</th>'
+      + '<th style="text-align:center;padding:6px 8px;color:#888;font-weight:500">Status</th>'
+      + '</tr></thead><tbody>';
+    for (const [name, d] of Object.entries(cfg.datasets)) {
+      const ready = d.exists && d.file_count > 0;
+      html += '<tr style="border-bottom:1px solid #f0f0ec">'
+        + '<td style="padding:7px 8px;font-weight:600">'+name+'</td>'
+        + '<td style="padding:7px 8px;color:#888;font-size:11px;font-family:monospace">'+d.local_path+'</td>'
+        + '<td style="padding:7px 8px;text-align:right">'+d.file_count.toLocaleString()+'</td>'
+        + '<td style="padding:7px 8px;text-align:center"><span style="font-size:11px;padding:2px 8px;border-radius:20px;background:'+(ready?'#e8f5e9':'#ffebee')+';color:'+(ready?'#2e7d32':'#c62828')+'">'+(ready?'✅ Ready':'❌ Empty')+'</span></td>'
+        + '</tr>';
+    }
+    html += '</tbody></table>'
+      + '<div class="terminal" id="sftp-t-'+cid+'" style="display:none;margin-top:12px"></div>'
+      + '</div>';
+  }
+  if (!html) html = '<p style="color:#888">No SFTP clients configured.</p>';
+  document.getElementById('sftp-content').innerHTML = html;
+}
+
+async function testSftp(cid, btn) {
+  const orig = btn.innerHTML;
+  btn.innerHTML = '<span class="spinner"></span> Testing…';
+  btn.disabled = true;
+  try {
+    const r = await fetch('/api/sftp/test/'+cid, {method:'POST'});
+    const d = await r.json();
+    btn.innerHTML = d.ok ? '✅ Connected' : '❌ Failed';
+    btn.style.color = d.ok ? '#2e7d32' : '#c62828';
+    setTimeout(() => { btn.innerHTML=orig; btn.style.color=''; btn.disabled=false; }, 4000);
+  } catch(e) {
+    btn.innerHTML='❌ Error';
+    setTimeout(() => { btn.innerHTML=orig; btn.style.color=''; btn.disabled=false; }, 3000);
+  }
+}
+
+function openPushModal(cid) {
+  const cfg = sftpData[cid];
+  if (!cfg) return;
+  const qsel = document.getElementById('pipe-quarter');
+  const quarter = qsel ? qsel.value : '';
+  const qMap = {'Q1_2026':'202603003','Q2_2026':'202606003','Q3_2026':'202609003','Q4_2026':'202612003',
+                 'Q1_2027':'202703003','Q2_2027':'202706003','Q3_2027':'202709003','Q4_2027':'202712003'};
+  const qCode = qMap[quarter] || '';
+  const suggested = quarter ? 'Q'+quarter.replace('_','')+'_'+qCode : '';
+  const folderName = prompt('Enter the remote folder name:\n(e.g. Q2_2026_202606003)', suggested);
+  if (!folderName) return;
+  const t = document.getElementById('sftp-t-'+cid);
+  t.style.display='block'; t.innerHTML='<span class="spinner"></span> Starting push…';
+  post('/api/sftp/push/'+cid, {folder_name: folderName}).then(d => {
+    if (d.error) { t.innerHTML='❌ '+d.error; return; }
+    pollJob(d.job_id, 'sftp-t-'+cid);
+  });
+}
+
+async function pullSftp(cid) {
+  if (!confirm('Pull MapIT data from '+sftpData[cid]?.label+'?')) return;
+  const t = document.getElementById('sftp-t-'+cid);
+  t.style.display='block'; t.innerHTML='';
+  const d = await post('/api/sftp/pull/'+cid, {});
+  if (d.error) { t.innerHTML='❌ '+d.error; return; }
+  pollJob(d.job_id, 'sftp-t-'+cid);
+}
+
+</script>
+
+
+
+</body>
+</html>

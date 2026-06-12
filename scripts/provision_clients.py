@@ -54,7 +54,7 @@ def occ(args: list, dry_run=False) -> str:
 
 
 # ── Load & clean CSV ──────────────────────────────────────────
-def load_csv(path: str) -> pd.DataFrame:
+def load_csv(path: str, distro_folder: str = "") -> pd.DataFrame:
     df = pd.read_csv(path)
     # Forward-fill CLIENT and PASSWORD (they only appear on the first row per client)
     df["CLIENT"]   = df["CLIENT"].ffill()
@@ -64,6 +64,10 @@ def load_csv(path: str) -> pd.DataFrame:
     # Clean whitespace
     for col in df.columns:
         df[col] = df[col].astype(str).str.strip()
+    # Substitute {DISTRO} placeholder with the current quarter distro folder
+    if distro_folder:
+        df["DirectoryPath"] = df["DirectoryPath"].str.replace(
+            "{DISTRO}", distro_folder, regex=False)
     return df
 
 
@@ -193,6 +197,19 @@ def main():
     parser.add_argument("--report",  action="store_true",                      help="Print a summary report at the end")
     args = parser.parse_args()
 
+    # Resolve distro folder from quarterly YAML if --quarter provided
+    distro_folder = ""
+    if args.quarter:
+        import yaml as _yaml
+        quarterly_path = Path(__file__).parent.parent / "quarterly" / f"{args.quarter}.yaml"
+        if quarterly_path.exists():
+            with open(quarterly_path) as _f:
+                _cfg = _yaml.safe_load(_f)
+            distro_folder = _cfg.get("distro_folder", "")
+            info(f"Quarter: {args.quarter} → {distro_folder}")
+        else:
+            warn(f"Quarterly config not found: {quarterly_path}")
+
     # Load env
     if not Path(args.env).exists():
         error(f".env not found at {args.env}. Copy config/.env.template to config/.env and fill it in.")
@@ -205,7 +222,7 @@ def main():
     # Load CSV
     if not Path(args.csv).exists():
         error(f"CSV not found at {args.csv}")
-    df = load_csv(args.csv)
+    df = load_csv(args.csv, distro_folder=distro_folder)
     client_map = build_client_map(df)
 
     info(f"Loaded {len(client_map)} clients from {args.csv}")
