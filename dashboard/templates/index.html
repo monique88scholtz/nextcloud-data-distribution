@@ -1772,6 +1772,30 @@ async function loadSftpStatus() {
     const r = await fetch('/api/sftp/status');
     sftpData = await r.json();
     renderSftp();
+    // Reconnect to any running push jobs
+    _sftpJobs = JSON.parse(sessionStorage.getItem('sftpJobs') || '{}');
+    for (const [cid, job_id] of Object.entries(_sftpJobs)) {
+      const t = document.getElementById('sftp-t-'+cid);
+      if (!t) continue;
+      const jobData = await (await fetch('/api/job/'+job_id)).json();
+      if (jobData.status === 'running' || jobData.status === 'done') {
+        t.style.display='block';
+        t.innerHTML='<span style="color:#9cdcfe">↩ Reconnected to push job '+job_id+'</span>\n';
+        if (jobData.status === 'running') {
+          toast('↩ Reconnected to running SFTP push for '+cid, 'info', 5000);
+          const result = await pollJob(job_id, 'sftp-t-'+cid);
+          clearSftpJob(cid);
+          if (result.status === 'done') toast('✅ SFTP push to '+cid+' complete!', 'success', 15000);
+        } else {
+          // Already done — show output
+          (jobData.output||[]).forEach(l=>{ t.innerHTML+=colorLine(l)+'\n'; });
+          t.scrollTop=t.scrollHeight;
+          clearSftpJob(cid);
+        }
+      } else {
+        clearSftpJob(cid);
+      }
+    }
   } catch(e) {
     document.getElementById('sftp-content').innerHTML = '<p style="color:#e24b4a">Failed: '+e.message+'</p>';
   }
@@ -1831,6 +1855,18 @@ async function testSftp(cid, btn) {
   }
 }
 
+// Store active SFTP jobs so we can reconnect after navigation
+var _sftpJobs = JSON.parse(sessionStorage.getItem('sftpJobs') || '{}');
+
+function saveSftpJob(cid, job_id) {
+  _sftpJobs[cid] = job_id;
+  sessionStorage.setItem('sftpJobs', JSON.stringify(_sftpJobs));
+}
+function clearSftpJob(cid) {
+  delete _sftpJobs[cid];
+  sessionStorage.setItem('sftpJobs', JSON.stringify(_sftpJobs));
+}
+
 function openPushModal(cid) {
   const cfg = sftpData[cid];
   if (!cfg) return;
@@ -1840,14 +1876,31 @@ function openPushModal(cid) {
                  'Q1_2027':'202703003','Q2_2027':'202706003','Q3_2027':'202709003','Q4_2027':'202712003'};
   const qCode = qMap[quarter] || '';
   const suggested = quarter ? 'Q'+quarter.replace('_','')+'_'+qCode : '';
-  const folderName = prompt('Enter the remote folder name:\n(e.g. Q2_2026_202606003)', suggested);
+  const folderName = prompt('Enter the remote folder name:\n(e.g. Q2_202606003)', suggested);
   if (!folderName) return;
+  startSftpPush(cid, folderName);
+}
+
+async function startSftpPush(cid, folderName) {
   const t = document.getElementById('sftp-t-'+cid);
-  t.style.display='block'; t.innerHTML='<span class="spinner"></span> Starting push…';
-  post('/api/sftp/push/'+cid, {folder_name: folderName}).then(d => {
+  if (!t) return;
+  t.style.display='block';
+  t.innerHTML='<span class="spinner"></span> Starting push…';
+  try {
+    const d = await post('/api/sftp/push/'+cid, {folder_name: folderName});
     if (d.error) { t.innerHTML='❌ '+d.error; return; }
-    pollJob(d.job_id, 'sftp-t-'+cid);
-  });
+    saveSftpJob(cid, d.job_id);
+    t.innerHTML='';
+    const result = await pollJob(d.job_id, 'sftp-t-'+cid);
+    clearSftpJob(cid);
+    if (result.status === 'done') {
+      toast('✅ SFTP push to '+cid+' complete!', 'success', 15000);
+    } else {
+      toast('❌ SFTP push to '+cid+' failed — check terminal', 'error', 10000);
+    }
+  } catch(e) {
+    t.innerHTML='❌ Error: '+e.message;
+  }
 }
 
 async function pullSftp(cid) {

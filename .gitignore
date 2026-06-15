@@ -38,3 +38,6 @@ nextcloud-agent-system-v*.zip
 # Dashboard
 dashboard/__pycache__/
 dashboard/*.pyc
+data/
+logs/
+nextcloud-agent-system/quarterly/
