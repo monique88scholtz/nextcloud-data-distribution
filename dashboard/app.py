@@ -2685,7 +2685,7 @@ FTP_CLIENTS = {
         "host": "196.30.53.61",
         "port": 21,
         "user": "mapit",
-        "remote_base": "/",
+        "remote_base": "/uploads",
         "datasets": {
             "MN_GLOBAL_MEA": "/mnt/data/DISTRIBUTION_CURRENT/MN/MN_MEA",
             "MN_GLOBAL_EUR": "/mnt/data/DISTRIBUTION_CURRENT/MN/MN_EUR",
@@ -2776,7 +2776,7 @@ HOST="{cfg['host']}"
 PORT="{cfg['port']}"
 USER="{cfg['user']}"
 PASS="{pw}"
-REMOTE_BASE="/{folder_name}"
+REMOTE_BASE="{cfg['remote_base']}/{folder_name}"
 LOG="{log_file}"
 DRY_RUN={1 if dry_run else 0}
 
@@ -2810,7 +2810,8 @@ push_ftp_dataset() {{
 
   lftp -u "$USER,$PASS" -p "$PORT" "ftp://$HOST" <<LFTP_EOF >> "$LOG" 2>&1
 set ftp:ssl-allow no
-mkdir -p $REMOTE_PATH
+mkdir -f -p $REMOTE_BASE
+mkdir -f -p $REMOTE_PATH
 mirror -R --parallel=2 "$LOCAL_PATH" "$REMOTE_PATH"
 bye
 LFTP_EOF
@@ -2842,7 +2843,7 @@ echo "__DONE__" >> "$LOG"
     def _push():
         def log(m): running_jobs[job_id]["output"].append(m)
         log(f"=== Pushing to {cfg['label']} ===")
-        log(f"Remote folder: /{folder_name}")
+        log(f"Remote folder: {cfg['remote_base']}/{folder_name}")
         log(f"Log: {log_file}")
         log("Running in background - safe to navigate away.")
         log("")
@@ -2861,7 +2862,7 @@ echo "__DONE__" >> "$LOG"
         while True:
             _time.sleep(2)
             try:
-                with open(log_file) as lf:
+                with open(log_file, errors='replace') as lf:
                     lines = lf.readlines()
                 for line in lines[last_line:]:
                     running_jobs[job_id]["output"].append(line.rstrip())
@@ -2878,7 +2879,7 @@ echo "__DONE__" >> "$LOG"
                     break
                 if proc.poll() is not None and not any("__DONE__" in l for l in lines):
                     _time.sleep(2)
-                    with open(log_file) as lf:
+                    with open(log_file, errors='replace') as lf:
                         lines = lf.readlines()
                     for line in lines[last_line:]:
                         running_jobs[job_id]["output"].append(line.rstrip())
@@ -3089,7 +3090,7 @@ echo "__DONE__" >> "$LOG"
         while True:
             _time.sleep(2)
             try:
-                with open(log_file) as lf:
+                with open(log_file, errors='replace') as lf:
                     lines = lf.readlines()
                 for line in lines[last_line:]:
                     running_jobs[job_id]["output"].append(line.rstrip())
@@ -3108,7 +3109,7 @@ echo "__DONE__" >> "$LOG"
                 # Check if process ended unexpectedly
                 if proc.poll() is not None and not any("__DONE__" in l for l in lines):
                     _time.sleep(2)
-                    with open(log_file) as lf:
+                    with open(log_file, errors='replace') as lf:
                         lines = lf.readlines()
                     for line in lines[last_line:]:
                         running_jobs[job_id]["output"].append(line.rstrip())

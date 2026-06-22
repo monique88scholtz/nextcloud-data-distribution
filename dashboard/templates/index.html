@@ -1944,8 +1944,23 @@ function clearFtpJob(cid) {
   sessionStorage.setItem('ftpJobs', JSON.stringify(_ftpJobs));
 }
 
-function openFtpPushModal(cid, dryRun) {
-  const folderName = prompt((dryRun ? 'DRY RUN — ' : '') + 'Enter the remote folder name:\n(e.g. MN_GLOBAL_2026_06)', 'MN_GLOBAL');
+async function openFtpPushModal(cid, dryRun) {
+  // Autotrak's existing convention is MN_GLOBAL_Q{quarter}_{year}
+  // e.g. MN_GLOBAL_Q2_2025, MN_GLOBAL_Q2_2024
+  let suggested = 'MN_GLOBAL';
+  try {
+    const qsel = document.getElementById('pipe-quarter');
+    const quarter = qsel ? qsel.value : (quarters.length ? quarters[0] : '');
+    if (quarter) {
+      // quarter looks like "Q2_2026" already
+      suggested = 'MN_GLOBAL_' + quarter;
+    }
+  } catch(e) { /* fall back to default suggestion */ }
+
+  const folderName = prompt(
+    (dryRun ? 'DRY RUN — ' : '') + 'Remote folder name (matches Autotrak\'s existing naming convention):',
+    suggested
+  );
   if (!folderName) return;
   startFtpPush(cid, folderName, dryRun);
 }
