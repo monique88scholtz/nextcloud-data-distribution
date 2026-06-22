@@ -153,7 +153,7 @@ select:focus,input:focus{border-color:#185fa5;box-shadow:0 0 0 2px #e6f1fb}
     <div class="nav-section">Delivery</div>
     <div class="nav-item" onclick="showPage('notify',this);loadNotifications()"><i class="ti ti-mail"></i>Notifications</div>
     <div class="nav-item" onclick="showPage('uploads',this);loadUploads()"><i class="ti ti-upload"></i>Client Uploads</div>
-    <div class="nav-item" onclick="showPage('sftp',this);loadSftpStatus()"><i class="ti ti-cloud-upload"></i>SFTP Push</div>
+    <div class="nav-item" onclick="showPage('sftp',this);loadSftpStatus();loadFtpStatus()"><i class="ti ti-cloud-upload"></i>SFTP Push</div>
   </nav>
   <div class="nav-bottom">
     <a class="nc-btn" id="nc-link" href="{{ nc_url }}" target="_blank">
@@ -564,9 +564,15 @@ select:focus,input:focus{border-color:#185fa5;box-shadow:0 0 0 2px #e6f1fb}
 <div id="page-sftp" class="page">
   <div class="page-header">
     <div><h2>SFTP Push</h2><p>Push data to external partners</p></div>
-    <button class="btn" onclick="loadSftpStatus()"><i class="ti ti-refresh"></i> Refresh</button>
+    <button class="btn" onclick="loadSftpStatus();loadFtpStatus()"><i class="ti ti-refresh"></i> Refresh</button>
   </div>
   <div id="sftp-content"><div style="color:#888;font-size:13px"><span class="spinner"></span> Loading...</div></div>
+
+  <div class="page-header" style="margin-top:24px">
+    <div><h2>FTP Push</h2><p>Push data via plain FTP (limited-window partners)</p></div>
+    <button class="btn" onclick="loadFtpStatus()"><i class="ti ti-refresh"></i> Refresh</button>
+  </div>
+  <div id="ftp-content"><div style="color:#888;font-size:13px"><span class="spinner"></span> Loading...</div></div>
 </div>
 
 <!-- TOAST CONTAINER -->
@@ -1837,6 +1843,133 @@ function renderSftp() {
   }
   if (!html) html = '<p style="color:#888">No SFTP clients configured.</p>';
   document.getElementById('sftp-content').innerHTML = html;
+}
+
+var ftpData = {};
+
+async function loadFtpStatus() {
+  document.getElementById('ftp-content').innerHTML = '<div style="color:#888;font-size:13px"><span class="spinner"></span> Loading...</div>';
+  try {
+    const r = await fetch('/api/ftp/status');
+    ftpData = await r.json();
+    renderFtp();
+    _ftpJobs = JSON.parse(sessionStorage.getItem('ftpJobs') || '{}');
+    for (const [cid, job_id] of Object.entries(_ftpJobs)) {
+      const t = document.getElementById('ftp-t-'+cid);
+      if (!t) continue;
+      const jobData = await (await fetch('/api/job/'+job_id)).json();
+      if (jobData.status === 'running' || jobData.status === 'done') {
+        t.style.display='block';
+        t.innerHTML='<span style="color:#9cdcfe">↩ Reconnected to push job '+job_id+'</span>\n';
+        if (jobData.status === 'running') {
+          toast('↩ Reconnected to running FTP push for '+cid, 'info', 5000);
+          const result = await pollJob(job_id, 'ftp-t-'+cid);
+          clearFtpJob(cid);
+          if (result.status === 'done') toast('✅ FTP push to '+cid+' complete!', 'success', 15000);
+        } else {
+          (jobData.output||[]).forEach(l=>{ t.innerHTML+=colorLine(l)+'\n'; });
+          t.scrollTop=t.scrollHeight;
+          clearFtpJob(cid);
+        }
+      } else {
+        clearFtpJob(cid);
+      }
+    }
+  } catch(e) {
+    document.getElementById('ftp-content').innerHTML = '<p style="color:#e24b4a">Failed: '+e.message+'</p>';
+  }
+}
+
+function renderFtp() {
+  let html = '';
+  for (const [cid, cfg] of Object.entries(ftpData)) {
+    const pwOk = cfg.has_password;
+    html += '<div class="card" style="margin-bottom:16px">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:14px">'
+      + '<div><div style="font-size:16px;font-weight:700;margin-bottom:2px">'+cfg.label+'</div>'
+      + '<div style="font-size:12px;color:#888">'+cfg.user+'@'+cfg.host+':'+cfg.port+' (FTP)</div></div>'
+      + '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
+      + '<span style="font-size:11px;padding:3px 10px;border-radius:20px;background:'+(pwOk?'#e8f5e9':'#fff3e0')+';color:'+(pwOk?'#2e7d32':'#e65100')+'">'+(pwOk?'🔑 Password set':'⚠️ No password')+'</span>'
+      + '<button class="btn" onclick="testFtp(&quot;'+cid+'&quot;,this)"><i class="ti ti-plug"></i> Test connection</button>'
+      + '<button class="btn" onclick="openFtpPushModal(&quot;'+cid+'&quot;, true)" '+(pwOk?'':'disabled')+'><i class="ti ti-eye"></i> Dry run</button>'
+      + '<button class="btn btn-primary" onclick="openFtpPushModal(&quot;'+cid+'&quot;, false)" '+(pwOk?'':'disabled')+'><i class="ti ti-cloud-upload"></i> Push data</button>'
+      + '</div></div>'
+      + '<table style="width:100%;border-collapse:collapse;font-size:13px">'
+      + '<thead><tr style="border-bottom:1px solid #e8e8e4">'
+      + '<th style="text-align:left;padding:6px 8px;color:#888;font-weight:500">Dataset</th>'
+      + '<th style="text-align:left;padding:6px 8px;color:#888;font-weight:500">Local path</th>'
+      + '<th style="text-align:right;padding:6px 8px;color:#888;font-weight:500">Files</th>'
+      + '<th style="text-align:center;padding:6px 8px;color:#888;font-weight:500">Status</th>'
+      + '</tr></thead><tbody>';
+    for (const [name, d] of Object.entries(cfg.datasets)) {
+      const ready = d.exists && d.file_count > 0;
+      html += '<tr style="border-bottom:1px solid #f0f0ec">'
+        + '<td style="padding:7px 8px;font-weight:600">'+name+'</td>'
+        + '<td style="padding:7px 8px;color:#888;font-size:11px;font-family:monospace">'+d.local_path+'</td>'
+        + '<td style="padding:7px 8px;text-align:right">'+d.file_count.toLocaleString()+'</td>'
+        + '<td style="padding:7px 8px;text-align:center"><span style="font-size:11px;padding:2px 8px;border-radius:20px;background:'+(ready?'#e8f5e9':'#ffebee')+';color:'+(ready?'#2e7d32':'#c62828')+'">'+(ready?'✅ Ready':'❌ Empty')+'</span></td>'
+        + '</tr>';
+    }
+    html += '</tbody></table>'
+      + '<div class="terminal" id="ftp-t-'+cid+'" style="display:none;margin-top:12px"></div>'
+      + '</div>';
+  }
+  if (!html) html = '<p style="color:#888">No FTP clients configured.</p>';
+  document.getElementById('ftp-content').innerHTML = html;
+}
+
+async function testFtp(cid, btn) {
+  const orig = btn.innerHTML;
+  btn.innerHTML = '<span class="spinner"></span> Testing…';
+  btn.disabled = true;
+  try {
+    const r = await fetch('/api/ftp/test/'+cid, {method:'POST'});
+    const d = await r.json();
+    btn.innerHTML = d.ok ? '✅ Connected' : '❌ Failed';
+    btn.style.color = d.ok ? '#2e7d32' : '#c62828';
+    setTimeout(() => { btn.innerHTML=orig; btn.style.color=''; btn.disabled=false; }, 4000);
+  } catch(e) {
+    btn.innerHTML='❌ Error';
+    setTimeout(() => { btn.innerHTML=orig; btn.style.color=''; btn.disabled=false; }, 3000);
+  }
+}
+
+var _ftpJobs = JSON.parse(sessionStorage.getItem('ftpJobs') || '{}');
+function saveFtpJob(cid, job_id) {
+  _ftpJobs[cid] = job_id;
+  sessionStorage.setItem('ftpJobs', JSON.stringify(_ftpJobs));
+}
+function clearFtpJob(cid) {
+  delete _ftpJobs[cid];
+  sessionStorage.setItem('ftpJobs', JSON.stringify(_ftpJobs));
+}
+
+function openFtpPushModal(cid, dryRun) {
+  const folderName = prompt((dryRun ? 'DRY RUN — ' : '') + 'Enter the remote folder name:\n(e.g. MN_GLOBAL_2026_06)', 'MN_GLOBAL');
+  if (!folderName) return;
+  startFtpPush(cid, folderName, dryRun);
+}
+
+async function startFtpPush(cid, folderName, dryRun) {
+  const t = document.getElementById('ftp-t-'+cid);
+  if (!t) return;
+  t.style.display='block';
+  t.innerHTML='<span class="spinner"></span> Starting '+(dryRun?'dry run':'push')+'…';
+  try {
+    const d = await post('/api/ftp/push/'+cid, {folder_name: folderName, dry_run: dryRun});
+    if (d.error) { t.innerHTML='❌ '+d.error; return; }
+    if (!dryRun) saveFtpJob(cid, d.job_id);
+    t.innerHTML='';
+    const result = await pollJob(d.job_id, 'ftp-t-'+cid);
+    if (!dryRun) clearFtpJob(cid);
+    if (result.status === 'done') {
+      toast((dryRun?'Dry run':'FTP push')+' to '+cid+' complete!', 'success', 15000);
+    } else {
+      toast((dryRun?'Dry run':'FTP push')+' to '+cid+' failed — check terminal', 'error', 10000);
+    }
+  } catch(e) {
+    t.innerHTML='❌ Error: '+e.message;
+  }
 }
 
 async function testSftp(cid, btn) {

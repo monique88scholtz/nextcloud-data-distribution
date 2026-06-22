@@ -77,10 +77,6 @@ mkdir_p "$DISTRO/MN"
 for region in MEA EUR ZAF ZAF_PLUS SOUTHERN_AFRICA 3D_TRACKING; do
     mkdir_p "$DISTRO/MN/MN_${region}"
 done
-mkdir_p "$DISTRO/MN/MN_GLOBAL"
-for region in MEA EUR NAM LAM SEA CAS IND OCE ISR S_O; do
-    mkdir_p "$DISTRO/MN/MN_GLOBAL/${region}"
-done
 mkdir_p "$DISTRO/MN/MN_DOCUMENTATION"
 for region in MEA EUR NAM LAM SEA CAS IND OCE ISR S_O; do
     mkdir_p "$DISTRO/MN/MN_DOCUMENTATION/MN_DOCUMENTATION_${region}"

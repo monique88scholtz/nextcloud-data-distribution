@@ -54,7 +54,7 @@ SKIP_QC=0
 NC_PATH="/var/www/html/nextcloud"
 
 # ── Valid MNR module names ─────────────────────────────────────
-VALID_MNR_MODULES="ada apt buildings core generic geopolitical geospatial junction_views level_0 logistics phonemes poi premium_speed_profiles speed_profiles traffic_signs"
+VALID_MNR_MODULES=(ada apt buildings core generic geopolitical geospatial junction_views level_0 logistics phonemes poi premium_speed_profiles speed_profiles traffic_signs)
 
 # ── Region documentation files ─────────────────────────────────
 # These sit at data/{region}/ level — one set per region download
@@ -180,7 +180,7 @@ qc_mnr() {
             local mod
             mod=$(basename "$module_dir")
             local valid=0
-            for vm in $VALID_MNR_MODULES; do
+            for vm in "${VALID_MNR_MODULES[@]}"; do
                 [[ "$mod" == "$vm" ]] && { valid=1; break; }
             done
             if (( ! valid )); then
@@ -634,7 +634,10 @@ if (( ! SKIP_QC )); then
     QC_ERRORS=0
     for mnr_dir in "$DISTRO_FOLDER"/MNR/MNR_*/; do
         [[ -d "$mnr_dir" ]] || continue
-        [[ "$(basename "$mnr_dir")" == "MNR_DOCUMENTATION" ]] && continue
+        mnr_key="$(basename "$mnr_dir")"
+        [[ "$mnr_key" == "MNR_DOCUMENTATION" ]] && continue
+        # Only QC datasets that were actually part of this run
+        should_run "$mnr_key" || continue
         qc_mnr "$mnr_dir" || (( QC_ERRORS++ )) || true
     done
     if (( QC_ERRORS > 0 )); then

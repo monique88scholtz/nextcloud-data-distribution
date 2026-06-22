@@ -1391,11 +1391,17 @@ def run_ingest_dataset():
         }
         dest = dest_map.get(prefix)
         if dest and dest.exists():
-            count = sum(1 for _ in dest.rglob("*.tar.gz"))
+            # MNR uses .tar.gz; MN, SP, POI, APT use .7z.001
+            if prefix == "MNR":
+                count = sum(1 for _ in dest.rglob("*.tar.gz"))
+                ext_label = ".tar.gz"
+            else:
+                count = sum(1 for _ in dest.rglob("*.7z.001"))
+                ext_label = ".7z.001"
             if count > 0:
                 log(f"✅ Verified: {count} file(s) in {dest.name}")
             else:
-                log(f"⚠️  Destination exists but no .tar.gz files found")
+                log(f"⚠️  Destination exists but no {ext_label} files found")
         else:
             log(f"⚠️  Destination folder not found: {dest}")
 
@@ -2668,6 +2674,223 @@ def _count_files(path):
         return sum(len(files) for _, _, files in os.walk(path))
     except Exception:
         return 0
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  FTP PUSH (Autotrak — plain FTP, not SFTP)
+# ══════════════════════════════════════════════════════════════════════════════
+
+FTP_CLIENTS = {
+    "autotrak": {
+        "label": "Autotrak (FTP)",
+        "host": "196.30.53.61",
+        "port": 21,
+        "user": "mapit",
+        "remote_base": "/",
+        "datasets": {
+            "MN_GLOBAL_MEA": "/mnt/data/DISTRIBUTION_CURRENT/MN/MN_MEA",
+            "MN_GLOBAL_EUR": "/mnt/data/DISTRIBUTION_CURRENT/MN/MN_EUR",
+            "MN_GLOBAL_NAM": "/mnt/data/DISTRIBUTION_CURRENT/MN/MN_NAM",
+            "MN_GLOBAL_LAM": "/mnt/data/DISTRIBUTION_CURRENT/MN/MN_LAM",
+            "MN_GLOBAL_SEA": "/mnt/data/DISTRIBUTION_CURRENT/MN/MN_SEA",
+            "MN_GLOBAL_CAS": "/mnt/data/DISTRIBUTION_CURRENT/MN/MN_CAS",
+            "MN_GLOBAL_IND": "/mnt/data/DISTRIBUTION_CURRENT/MN/MN_IND",
+            "MN_GLOBAL_OCE": "/mnt/data/DISTRIBUTION_CURRENT/MN/MN_OCE",
+            "MN_GLOBAL_ISR": "/mnt/data/DISTRIBUTION_CURRENT/MN/MN_ISR",
+            "MN_GLOBAL_S_O": "/mnt/data/DISTRIBUTION_CURRENT/MN/MN_S_O",
+        },
+    },
+}
+
+def _ftp_password(client_id):
+    env = load_env()
+    key = f"FTP_{client_id.upper()}_PASSWORD"
+    return env.get(key, "")
+
+@app.route("/api/ftp/status")
+def ftp_status():
+    result = {}
+    for cid, cfg in FTP_CLIENTS.items():
+        datasets = {}
+        for name, local_path in cfg["datasets"].items():
+            datasets[name] = {
+                "local_path": local_path,
+                "file_count": _count_files(local_path),
+                "exists": os.path.isdir(local_path),
+            }
+        result[cid] = {
+            "label": cfg["label"], "host": cfg["host"], "port": cfg["port"],
+            "user": cfg["user"], "datasets": datasets,
+            "has_password": bool(_ftp_password(cid)),
+        }
+    return jsonify(result)
+
+@app.route("/api/ftp/test/<client_id>", methods=["POST"])
+def ftp_test(client_id):
+    if client_id not in FTP_CLIENTS:
+        return jsonify({"error": "Unknown client"}), 404
+    cfg = FTP_CLIENTS[client_id]
+    pw = _ftp_password(client_id)
+    if not pw:
+        return jsonify({"ok": False, "msg": f"No password set. Add FTP_{client_id.upper()}_PASSWORD to config."})
+    try:
+        cmd = [
+            "lftp", "-u", f"{cfg['user']},{pw}",
+            "-p", str(cfg["port"]),
+            f"ftp://{cfg['host']}",
+            "-e", "pwd; bye"
+        ]
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
+        ok = r.returncode == 0
+        return jsonify({"ok": ok, "msg": (r.stdout or r.stderr).strip()[-300:]})
+    except subprocess.TimeoutExpired:
+        return jsonify({"ok": False, "msg": "Connection timed out"})
+    except Exception as e:
+        return jsonify({"ok": False, "msg": str(e)})
+
+@app.route("/api/ftp/push/<client_id>", methods=["POST"])
+def ftp_push(client_id):
+    if client_id not in FTP_CLIENTS:
+        return jsonify({"error": "Unknown client"}), 404
+    cfg = FTP_CLIENTS[client_id]
+    pw = _ftp_password(client_id)
+    data = request.get_json(silent=True) or {}
+    folder_name = data.get("folder_name", "")
+    dry_run = data.get("dry_run", False)
+    if not pw:
+        return jsonify({"error": f"No password set. Add FTP_{client_id.upper()}_PASSWORD to config."}), 400
+    if not folder_name:
+        return jsonify({"error": "folder_name required"}), 400
+
+    job_id = str(uuid.uuid4())[:8]
+    running_jobs[job_id] = {"status": "running", "output": []}
+
+    log_file    = f"/var/log/ddq_ftp_{client_id}_{job_id}.log"
+    script_file = f"/tmp/ddq_ftp_push_{job_id}.sh"
+
+    dataset_lines = ""
+    for name, local_path in cfg["datasets"].items():
+        dataset_lines += f'push_ftp_dataset "{name}" "{local_path}"\n'
+
+    script = f"""#!/bin/bash
+HOST="{cfg['host']}"
+PORT="{cfg['port']}"
+USER="{cfg['user']}"
+PASS="{pw}"
+REMOTE_BASE="/{folder_name}"
+LOG="{log_file}"
+DRY_RUN={1 if dry_run else 0}
+
+log() {{ echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG"; }}
+
+push_ftp_dataset() {{
+  local DATASET="$1"
+  local LOCAL_PATH="$2"
+  local REMOTE_PATH="$REMOTE_BASE/$DATASET"
+  log "── $DATASET ──"
+
+  if [[ ! -d "$LOCAL_PATH" ]]; then
+    log "   Skipping - local path missing: $LOCAL_PATH"
+    return
+  fi
+
+  local COUNT
+  COUNT=$(find "$LOCAL_PATH" -type f | wc -l)
+  if [[ "$COUNT" -eq 0 ]]; then
+    log "   Skipping - no files found"
+    return
+  fi
+  log "   Found $COUNT file(s) to push"
+
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    find "$LOCAL_PATH" -type f | while read -r f; do
+      log "   DRY-RUN would upload: $f -> $REMOTE_PATH/$(basename $f)"
+    done
+    return
+  fi
+
+  lftp -u "$USER,$PASS" -p "$PORT" "ftp://$HOST" <<LFTP_EOF >> "$LOG" 2>&1
+set ftp:ssl-allow no
+mkdir -p $REMOTE_PATH
+mirror -R --parallel=2 "$LOCAL_PATH" "$REMOTE_PATH"
+bye
+LFTP_EOF
+
+  if [[ $? -eq 0 ]]; then
+    log "   Done: $DATASET"
+  else
+    log "   FAILED: $DATASET"
+  fi
+}}
+
+log "=== FTP Push - {cfg['label']} ==="
+log "Remote: $REMOTE_BASE"
+log "Started: $(date)"
+log ""
+{dataset_lines}
+log ""
+log "=== FTP push complete ==="
+echo "__DONE__" >> "$LOG"
+"""
+
+    with open(script_file, 'w') as f:
+        f.write(script)
+    os.chmod(script_file, 0o755)
+
+    running_jobs[job_id]["log_file"] = log_file
+    running_jobs[job_id]["script_file"] = script_file
+
+    def _push():
+        def log(m): running_jobs[job_id]["output"].append(m)
+        log(f"=== Pushing to {cfg['label']} ===")
+        log(f"Remote folder: /{folder_name}")
+        log(f"Log: {log_file}")
+        log("Running in background - safe to navigate away.")
+        log("")
+
+        with open(log_file, 'w') as lf:
+            proc = subprocess.Popen(
+                ["nohup", "bash", script_file],
+                stdout=lf, stderr=lf,
+                preexec_fn=os.setsid, close_fds=True
+            )
+        running_jobs[job_id]["pid"] = proc.pid
+        log(f"PID: {proc.pid}")
+
+        import time as _time
+        last_line = 0
+        while True:
+            _time.sleep(2)
+            try:
+                with open(log_file) as lf:
+                    lines = lf.readlines()
+                for line in lines[last_line:]:
+                    running_jobs[job_id]["output"].append(line.rstrip())
+                last_line = len(lines)
+                if any("__DONE__" in l for l in lines):
+                    running_jobs[job_id]["status"] = "done"
+                    if not dry_run:
+                        send_notification_email(
+                            f"GeoINT: FTP push to {cfg['label']} complete - {folder_name}",
+                            f"<p>FTP push to <strong>{cfg['label']}</strong> completed.</p>"
+                            f"<p>Remote folder: <code>/{folder_name}</code></p>"
+                            f"<p>Log: <code>{log_file}</code></p>"
+                        )
+                    break
+                if proc.poll() is not None and not any("__DONE__" in l for l in lines):
+                    _time.sleep(2)
+                    with open(log_file) as lf:
+                        lines = lf.readlines()
+                    for line in lines[last_line:]:
+                        running_jobs[job_id]["output"].append(line.rstrip())
+                    running_jobs[job_id]["status"] = "error"
+                    break
+            except Exception as e:
+                running_jobs[job_id]["output"].append(f"Log tail error: {e}")
+                break
+
+    threading.Thread(target=_push, daemon=True).start()
+    return jsonify({"job_id": job_id, "log_file": log_file})
+
 
 @app.route("/api/sftp/status")
 def sftp_status():
