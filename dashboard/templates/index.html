@@ -75,6 +75,7 @@ body{font-family:'Montserrat',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-s
 .ds-icon-downloading{background:#e6f1fb}
 .ds-icon-downloaded{background:#e1f5ee}
 .ds-icon-ingested{background:#d4f5e9}
+.ds-icon-incomplete{background:#fff3cd}
 .ds-name{font-size:13px;font-weight:600;flex:1}
 .ds-status{font-size:11px;color:#888;margin-bottom:6px}
 .ds-size{font-size:11px;font-weight:500;color:#185fa5}
@@ -326,6 +327,19 @@ select:focus,input:focus{border-color:#185fa5;box-shadow:0 0 0 2px #e6f1fb}
       <button class="btn btn-danger" id="mapflow-delete-btn" style="display:none" onclick="clearMapflowCache()"><i class="ti ti-trash"></i> Delete cache</button>
     </div>
     <div class="terminal" id="mapflow-cache-t" style="display:none;margin-top:10px"></div>
+  </div>
+  <!-- Old quarter cleanup -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-calendar-minus" style="font-size:14px"></i>Old quarter distribution folders</div>
+    <p style="font-size:13px;color:#888;margin-bottom:12px">
+      Lists every quarterly distribution folder on disk. The currently active quarter is protected and cannot be deleted here.
+      Deleting an old quarter is permanent - it cannot be re-created without re-downloading and re-organising all data from TomTom.
+    </p>
+    <div style="margin-bottom:12px">
+      <button class="btn" onclick="loadOldQuarters()"><i class="ti ti-refresh"></i> Refresh list</button>
+    </div>
+    <div id="old-quarters-list"><div style="color:#888;font-size:13px">Click refresh to load.</div></div>
+    <div class="terminal" id="old-quarters-t" style="display:none;margin-top:10px"></div>
   </div>
   <!-- Download cleanup -->
   <div class="card">
@@ -775,12 +789,36 @@ function renderPipelineBoard(d){
   }
 
   grid.innerHTML = Object.values(datasets).map(ds => {
-    const state = ds.ingested ? 'ingested' : ds.active ? 'active' : ds.downloaded ? 'downloaded' : 'pending';
-    const icon  = ds.ingested ? '✅' : ds.active ? '⬇️' : ds.downloaded ? '📥' : '⏳';
-    const iconBg = ds.ingested ? 'ds-icon-ingested' : ds.active ? 'ds-icon-downloading' : ds.downloaded ? 'ds-icon-downloaded' : 'ds-icon-pending';
-    const statusText = ds.ingested ? 'Organised' : ds.active ? 'Downloading...' : ds.downloaded ? 'Ready to organise' : ds.is_subset ? 'Subset of '+ds.subset_of : 'Not downloaded';
+    // A dataset only counts as truly incomplete if either:
+    // - leftover .aria2/0-byte markers were found, OR
+    // - the TomTom manifest check ran and found it under 100%
+    const hasVerify = (ds.verify_percent !== null && ds.verify_percent !== undefined);
+    const isIncomplete = (ds.incomplete_count || 0) > 0 || (hasVerify && ds.verify_percent < 100);
+    const state = isIncomplete ? 'incomplete' : ds.ingested ? 'ingested' : ds.active ? 'active' : ds.downloaded ? 'downloaded' : 'pending';
+    const icon  = isIncomplete ? '⚠️' : ds.ingested ? '✅' : ds.active ? '⬇️' : ds.downloaded ? '📥' : '⏳';
+    const iconBg = isIncomplete ? 'ds-icon-incomplete' : ds.ingested ? 'ds-icon-ingested' : ds.active ? 'ds-icon-downloading' : ds.downloaded ? 'ds-icon-downloaded' : 'ds-icon-pending';
+    let statusText;
+    if(isIncomplete && hasVerify){
+      statusText = `Download not finished — ${ds.verify_percent}% done, ${ds.verify_missing_gb}GB still to download`;
+    } else if(isIncomplete){
+      statusText = `Download not finished — ${ds.incomplete_count} file(s) still to download`;
+    } else if(ds.ingested){
+      statusText = 'Organised';
+    } else if(ds.active){
+      statusText = 'Downloading...';
+    } else if(ds.downloaded){
+      statusText = hasVerify ? 'Fully downloaded — ready to organise' : 'Ready to organise';
+    } else if(ds.is_subset){
+      statusText = 'Subset of '+ds.subset_of;
+    } else {
+      statusText = 'Not downloaded';
+    }
     const sizeText = ds.size ? ds.size : '';
-    const canIngest = ds.downloaded && !ds.ingested && !ds.active;
+    const canIngest = ds.downloaded && !ds.ingested && !ds.active && !isIncomplete;
+    const canResume = isIncomplete && !ds.active;
+    const resumeLabel = (hasVerify && ds.verify_missing_gb > 0)
+      ? `Finish downloading (${ds.verify_missing_gb}GB left)`
+      : `Finish downloading`;
     return `<div class="dataset-card ds-${state}" id="dscard-${ds.key}">
       <div class="ds-header">
         <div class="ds-icon ${iconBg}">${icon}</div>
@@ -789,6 +827,7 @@ function renderPipelineBoard(d){
       <div class="ds-status">${statusText}</div>
       ${sizeText ? `<div class="ds-size">${sizeText}</div>` : ''}
       ${canIngest ? `<div class="ds-actions"><button class="btn btn-sm btn-primary" onclick="ingestDataset('${ds.key}','${q}')"><i class="ti ti-check"></i> Organise this dataset</button></div>` : ''}
+      ${canResume ? `<div class="ds-actions"><button class="btn btn-sm" style="background:#fff3cd;border-color:#f0c14b;color:#856404;font-weight:600" onclick="resumeDownload('${ds.key}','${ds.family}','${ds.region}','${q}')"><i class="ti ti-refresh"></i> ${resumeLabel}</button></div>` : ''}
     </div>`;
   }).join('');
 }
@@ -998,6 +1037,53 @@ function showDlStatus(msg, type='info'){
   const s=c[type]||c.info;
   el.style.display='block';el.style.background=s.bg;el.style.color=s.color;el.style.border='1px solid '+s.border;
   el.innerHTML=msg;
+}
+
+async function resumeDownload(key, family, region, quarter){
+  // Resume an incomplete download. MapFlow's own download logic skips files
+  // that already exist on disk and only fetches files that are missing or
+  // were never started - so re-running the same download for this dataset
+  // naturally continues where it left off, no separate resume code needed.
+  if(!confirm(`Resume the ${key} download?\n\nThis will only fetch the files that are missing or incomplete - files already downloaded successfully will be skipped.`)) return;
+
+  toast('Looking up version for '+quarter+'...', 'info', 4000);
+  let version = '';
+  try{
+    const d = await (await fetch('/api/config/quarterly/'+quarter)).json();
+    if(d.content){
+      const m = d.content.match(/tomtom_version:\s*["\']{0,1}([0-9]+\.[0-9]+)\.[0-9]+["\']{0,1}/);
+      if(m){
+        const suffix = family === 'MNR' ? '003' : '000';
+        version = m[1] + '.' + suffix;
+      }
+    }
+  }catch(e){}
+
+  if(!version){
+    toast('Could not determine version for this quarter - open the Download modal and resume manually', 'error', 10000);
+    return;
+  }
+
+  toast('Resuming '+key+' download...', 'info', 5000);
+  const resp = await post('/api/run/download', {family, quarter, version, region, force:true});
+  if(!resp.job_id){
+    toast('Could not start resume: '+(resp.message||'unknown error'), 'error', 10000);
+    return;
+  }
+
+  document.getElementById('pipe-terminal-card').style.display='block';
+  const term = document.getElementById('pipe-t');
+  term.innerHTML='';
+  term.style.display='block';
+
+  pollJob(resp.job_id, 'pipe-t').then(result=>{
+    if(result.status === 'done'){
+      toast(key+' resume complete!', 'success', 10000);
+    } else {
+      toast(key+' resume failed - check output', 'error', 10000);
+    }
+    setTimeout(loadPipeline, 2000);
+  });
 }
 
 async function startDownload(){
@@ -1335,6 +1421,76 @@ function initNotifyQuarterSelect(){
   if(sel && !sel._handlerSet){
     sel.addEventListener('change', ()=>{ if(!_suppressNotifyReload) loadNotifications(); });
     sel._handlerSet = true;
+  }
+}
+
+async function loadOldQuarters(){
+  const listEl = document.getElementById('old-quarters-list');
+  listEl.innerHTML = '<div style="color:#888;font-size:13px"><span class="spinner"></span> Loading...</div>';
+  try{
+    const d = await (await fetch('/api/cleanup/quarters', {cache:'no-store'})).json();
+    if(!d.quarters || !d.quarters.length){
+      listEl.innerHTML = '<p style="color:#888;font-size:13px">No quarterly distribution folders found.</p>';
+      return;
+    }
+    listEl.innerHTML = d.quarters.map(q => {
+      const protectedBadge = q.protected
+        ? '<span class="badge b-info">Active quarter - protected</span>'
+        : '<span class="badge b-warn">Old quarter</span>';
+      const deleteBtn = q.protected
+        ? `<button class="btn btn-sm" disabled title="Cannot delete the active quarter"><i class="ti ti-lock"></i> Protected</button>`
+        : `<button class="btn btn-danger btn-sm" onclick="confirmDeleteQuarter('${q.name}','${q.size}')"><i class="ti ti-trash"></i> Delete</button>`;
+      return `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-radius:8px;margin-bottom:8px;background:${q.protected?'#f0f7ff':'#fafaf8'};border:1px solid ${q.protected?'#b5d4f4':'#e8e8e4'}">
+        <div>
+          <div style="font-size:13px;font-weight:600">${q.name} ${protectedBadge}</div>
+          <div style="font-size:11px;color:#888;margin-top:2px">Last modified: ${q.last_modified} &middot; ${q.path}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:14px;font-weight:600;color:${q.protected?'#185fa5':'#a32d2d'}">${q.size}</span>
+          ${deleteBtn}
+        </div>
+      </div>`;
+    }).join('');
+  }catch(e){
+    listEl.innerHTML = '<p style="color:#e24b4a">Failed to load: '+e.message+'</p>';
+  }
+}
+
+function confirmDeleteQuarter(folderName, size){
+  const typed = prompt(
+    `This will PERMANENTLY delete ${folderName} (${size}) from disk.\n\n`+
+    `This cannot be undone - all data must be re-downloaded and re-organised from TomTom if needed again.\n\n`+
+    `Type the folder name exactly to confirm:`,
+    ''
+  );
+  if(typed === null) return;
+  if(typed !== folderName){
+    toast('Confirmation text did not match - deletion cancelled', 'warn', 6000);
+    return;
+  }
+  deleteOldQuarter(folderName, typed);
+}
+
+async function deleteOldQuarter(folderName, confirmName){
+  const t = document.getElementById('old-quarters-t');
+  t.style.display = 'block';
+  t.innerHTML = '';
+  try{
+    const resp = await post('/api/cleanup/quarters/delete', {folder_name: folderName, confirm_name: confirmName});
+    if(resp.error){
+      t.innerHTML = '❌ '+resp.error;
+      toast('Delete failed: '+resp.error, 'error', 8000);
+      return;
+    }
+    const result = await pollJob(resp.job_id, 'old-quarters-t');
+    if(result.status === 'done'){
+      toast(folderName+' deleted - disk space freed', 'success', 10000);
+      loadOldQuarters();
+    } else {
+      toast(folderName+' deletion failed - check output', 'error', 10000);
+    }
+  }catch(e){
+    t.innerHTML = '❌ Error: '+e.message;
   }
 }
 

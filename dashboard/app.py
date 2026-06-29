@@ -133,13 +133,124 @@ def get_prefix(key):
     return key.split("_")[0]
 
 
+CLIENTS_META_DIR = Path("/mnt/data/downloads/downloads/clients/GEOINT")
+
+
+def find_latest_layers_manifest(folder_pattern):
+    """
+    Find the most recently modified *_layers.json file matching the given
+    download folder name (e.g. "MultiNet_SEA_2026.06.000_full_commercial").
+    MapFlow writes one of these per download attempt under a run-specific
+    UUID folder, so the most recently modified one is the correct manifest
+    to verify against - it reflects what TomTom said should exist for the
+    most recent attempt at this exact version.
+    """
+    if not CLIENTS_META_DIR.exists():
+        return None
+    candidates = list(CLIENTS_META_DIR.glob(f"*/{folder_pattern}_layers.json"))
+    if not candidates:
+        return None
+    return max(candidates, key=lambda p: p.stat().st_mtime)
+
+
+def verify_download_against_manifest(download_folder: Path, folder_name: str):
+    """
+    Compare what TomTom's API says should exist (from the layers.json
+    manifest MapFlow saves per download attempt) against what is actually
+    on disk right now, checking both file presence and exact file size.
+
+    Returns a dict with a plain-language summary suitable for display to
+    a non-technical person, plus the underlying numbers for the UI to
+    render a progress indicator.
+    """
+    manifest_path = find_latest_layers_manifest(folder_name)
+    if not manifest_path:
+        return {
+            "verified": False,
+            "reason": "No TomTom manifest found to verify against",
+        }
+
+    try:
+        with open(manifest_path) as f:
+            zones_data = json.load(f)
+    except Exception as e:
+        return {"verified": False, "reason": f"Could not read manifest: {e}"}
+
+    expected_total = 0
+    expected_size = 0
+    missing_files = []
+    missing_size = 0
+
+    for zone_dict in zones_data:
+        for zone, files in zone_dict.items():
+            for finfo in files:
+                expected_total += 1
+                expected_size += finfo.get("filesize", 0)
+                fname = finfo.get("filename", "")
+                fpath_rel = finfo.get("filepath", "/data").strip("/")
+                on_disk = download_folder / fpath_rel / fname
+                ok = False
+                if on_disk.exists():
+                    try:
+                        actual_size = on_disk.stat().st_size
+                        expected_file_size = finfo.get("filesize", 0)
+                        # Allow exact match only - a partial file is not complete
+                        ok = (actual_size == expected_file_size and actual_size > 0)
+                    except Exception:
+                        ok = False
+                if not ok:
+                    missing_files.append(fname)
+                    missing_size += finfo.get("filesize", 0)
+
+    present_count = expected_total - len(missing_files)
+    percent = round((present_count / expected_total) * 100, 1) if expected_total else 0
+    complete = (len(missing_files) == 0)
+
+    return {
+        "verified": True,
+        "complete": complete,
+        "percent_complete": percent,
+        "expected_files": expected_total,
+        "present_files": present_count,
+        "missing_files_count": len(missing_files),
+        "missing_size_gb": round(missing_size / (1024**3), 2),
+        "expected_size_gb": round(expected_size / (1024**3), 2),
+        "missing_files_sample": missing_files[:10],
+        "manifest_used": str(manifest_path),
+    }
+
+
+def check_dataset_incomplete(full_path):
+    """
+    Scan a download folder for signs of an interrupted download:
+    - .aria2 control files (aria2's own marker for unfinished downloads)
+    - .aria2__temp lock files (left behind when aria2c is killed mid-write)
+    - 0-byte data files (placeholder created but never written to)
+    Returns the count of incomplete file markers found.
+    """
+    try:
+        aria2_markers = sum(1 for _ in full_path.rglob("*.aria2*"))
+        zero_byte = sum(
+            1 for f in full_path.rglob("*")
+            if f.is_file()
+            and not f.name.endswith((".aria2", ".aria2__temp", ".meta4"))
+            and f.stat().st_size == 0
+        )
+        return aria2_markers + zero_byte
+    except Exception:
+        return 0
+
+
 def check_dataset_downloaded(key, family, region, version):
     """
     Check if a dataset's source folder exists on disk with actual data.
     Correctly distinguishes between different product families.
     Subset datasets (e.g. MNR_ZAF) check their parent regional download.
+
+    Returns: (downloaded, folder_name, size, incomplete_count)
+    incomplete_count > 0 means aria2 control files or 0-byte placeholders
+    were found - the download exists but is not actually finished.
     """
-    # For subset datasets, resolve to the actual source family/region
     if key in SUBSET_SOURCE:
         source_family, source_region = SUBSET_SOURCE[key]
     else:
@@ -148,34 +259,29 @@ def check_dataset_downloaded(key, family, region, version):
 
     pattern_fn = FOLDER_PATTERNS.get(source_family)
     if not pattern_fn:
-        return False, None, None
+        return False, None, None, 0
 
-    # MAPIT is never downloaded via TomTom API — always manual SFTP
-    # Never mark it as downloaded from folder detection
     if source_family == "MAPIT":
-        return False, "mapit (manual SFTP download)", None
-
+        return False, "mapit (manual SFTP download)", None, 0
     folder_name = pattern_fn(source_region, version)
     full_path   = DOWNLOADS / folder_name
-
     if full_path.exists():
         try:
-            # Check it actually has data files, not just empty folders
             has_data = any(True for _ in full_path.rglob("*.tar.gz")) or any(True for _ in full_path.rglob("*.7z.001"))
             if not has_data:
                 has_data = sum(1 for _ in full_path.rglob("*") if _.is_file()) > 5
             if has_data:
+                incomplete_count = check_dataset_incomplete(full_path)
                 try:
                     r = subprocess.run(["du", "-sh", str(full_path)],
                                        capture_output=True, text=True, timeout=10)
                     size = r.stdout.split()[0] if r.stdout else "?"
                 except:
                     size = "?"
-                return True, folder_name, size
+                return True, folder_name, size, incomplete_count
         except:
             pass
-
-    return False, folder_name, None
+    return False, folder_name, None, 0
 
 
 def get_pipeline_status(quarter):
@@ -251,7 +357,20 @@ def get_pipeline_status(quarter):
 
         # Use correct version suffix per family — MNR=.003, all others=.000
         _ver = version if family == "MNR" else version.rsplit(".", 1)[0] + ".000"
-        downloaded, folder, size = check_dataset_downloaded(key, family, region, _ver)
+        downloaded, folder, size, incomplete_count = check_dataset_downloaded(key, family, region, _ver)
+        verify_percent = None
+        verify_missing_gb = None
+        if downloaded and folder:
+            try:
+                full_dl_path = DOWNLOADS / folder
+                v = verify_download_against_manifest(full_dl_path, folder)
+                if v.get("verified"):
+                    verify_percent = v["percent_complete"]
+                    verify_missing_gb = v["missing_size_gb"]
+                    if not v["complete"]:
+                        incomplete_count = max(incomplete_count, v["missing_files_count"])
+            except Exception:
+                pass
 
         # Only mark as actively downloading if:
         # 1. Mapflow is running AND
@@ -346,6 +465,9 @@ def get_pipeline_status(quarter):
             "size":       display_size,
             "ingested":   ingested,
             "active":     is_active,
+            "incomplete_count": incomplete_count,
+            "verify_percent": verify_percent,
+            "verify_missing_gb": verify_missing_gb,
         }
 
     # Check if Nextcloud is provisioned for THIS quarter.
@@ -660,6 +782,28 @@ def api_quarters():
         else:
             details[q] = {"exists": False, "size": "0", "products": []}
     return jsonify({"quarters": quarters, "next": next_q, "details": details})
+
+
+@app.route("/api/verify/<family>/<region>")
+def api_verify_download(family, region):
+    """
+    Verify a download against TomTom's expected manifest. Returns a plain
+    summary of how complete the download actually is, independent of the
+    dashboard's "already downloaded" folder-existence check.
+    """
+    version = request.args.get("version", "")
+    if not version:
+        return jsonify({"error": "version query param required"}), 400
+    pattern_fn = FOLDER_PATTERNS.get(family)
+    if not pattern_fn:
+        return jsonify({"error": f"Unknown family: {family}"}), 400
+    folder_name = pattern_fn(region, version)
+    full_path = DOWNLOADS / folder_name
+    if not full_path.exists():
+        return jsonify({"error": f"Download folder not found: {folder_name}"}), 404
+    result = verify_download_against_manifest(full_path, folder_name)
+    result["folder_name"] = folder_name
+    return jsonify(result)
 
 
 @app.route("/api/pipeline/<quarter>")
@@ -1074,7 +1218,7 @@ def run_download():
 
     # Backend guard — check if already downloaded and force not set
     if not force:
-        already, folder, size = check_dataset_downloaded(
+        already, folder, size, incomplete_count = check_dataset_downloaded(
             f"{family}_{region}", family, region, version)
         if already:
             return jsonify({
@@ -1168,18 +1312,65 @@ def run_download():
 
         if folder_exists:
             log("")
-            log(f"✅ Download verified: {found_folder.name}")
+            log(f"Folder found: {found_folder.name} — verifying against TomTom manifest...")
             running_jobs[job_id]["status"] = "done"
-            # Send success email
-            send_notification_email(
-                f"✅ GeoInt: {family} {region} download complete for {quarter}",
-                f"<p><strong>{family} {region}</strong> data for <strong>{quarter}</strong> "
-                f"has finished downloading successfully.</p>"
-                f"<p>Folder: {found_folder.name}</p>"
-                f"<p>Go to the dashboard and click <strong>Organise files</strong> "
-                f"when all downloads are complete.</p>"
-                f"<p><a href='https://{load_env().get('NC_DOMAIN','localhost')}:5050'>"
-                f"Open Dashboard</a></p>")
+
+            # Verify against TomTom's manifest before claiming success.
+            # A folder existing with some files is not proof the download
+            # actually finished — disk-space failures and connection drops
+            # can leave a folder that looks present but is missing most of
+            # its files. Only send the "complete" email when verification
+            # confirms every expected file is present at the right size.
+            verify_result = None
+            try:
+                verify_result = verify_download_against_manifest(found_folder, found_folder.name)
+            except Exception as _ve:
+                log(f"⚠️  Could not verify against manifest: {_ve}")
+
+            if verify_result and verify_result.get("verified") and verify_result.get("complete"):
+                log(f"✅ Verified complete: {verify_result['present_files']}/{verify_result['expected_files']} files, "
+                    f"{verify_result['expected_size_gb']}GB")
+                send_notification_email(
+                    f"✅ GeoInt: {family} {region} download complete for {quarter}",
+                    f"<p><strong>{family} {region}</strong> data for <strong>{quarter}</strong> "
+                    f"has finished downloading successfully and was verified against "
+                    f"TomTom's file manifest ({verify_result['expected_files']} files, "
+                    f"{verify_result['expected_size_gb']}GB).</p>"
+                    f"<p>Folder: {found_folder.name}</p>"
+                    f"<p>Go to the dashboard and click <strong>Organise files</strong> "
+                    f"when all downloads are complete.</p>"
+                    f"<p><a href='https://{load_env().get('NC_DOMAIN','localhost')}:5050'>"
+                    f"Open Dashboard</a></p>")
+            elif verify_result and verify_result.get("verified") and not verify_result.get("complete"):
+                pct = verify_result["percent_complete"]
+                missing_gb = verify_result["missing_size_gb"]
+                missing_n = verify_result["missing_files_count"]
+                log(f"⚠️  INCOMPLETE: only {pct}% done — {missing_n} file(s) / {missing_gb}GB still missing")
+                send_notification_email(
+                    f"⚠️ GeoInt: {family} {region} download STOPPED EARLY for {quarter} — only {pct}% complete",
+                    f"<p><strong>{family} {region}</strong> data for <strong>{quarter}</strong> "
+                    f"stopped before finishing. Only <strong>{pct}%</strong> of the expected data "
+                    f"downloaded ({missing_gb}GB / {missing_n} file(s) still missing).</p>"
+                    f"<p>This is NOT ready to organise or deliver to clients yet.</p>"
+                    f"<p>Open the dashboard Pipeline page — the dataset card will show "
+                    f"a <strong>Finish downloading</strong> button to complete it.</p>"
+                    f"<p><a href='https://{load_env().get('NC_DOMAIN','localhost')}:5050'>"
+                    f"Open Dashboard</a></p>")
+            else:
+                # No manifest available to verify against — fall back to the
+                # old folder-existence signal but say so plainly, rather than
+                # implying a confidence level we don't actually have.
+                log("⚠️  No TomTom manifest available — could not verify completeness")
+                send_notification_email(
+                    f"⚠️ GeoInt: {family} {region} download finished for {quarter} — NOT independently verified",
+                    f"<p><strong>{family} {region}</strong> data for <strong>{quarter}</strong> "
+                    f"finished running and files are present, but this could not be checked "
+                    f"against TomTom's file manifest (none was found).</p>"
+                    f"<p>Please double-check the folder size looks correct before organising "
+                    f"or delivering this to clients.</p>"
+                    f"<p>Folder: {found_folder.name}</p>"
+                    f"<p><a href='https://{load_env().get('NC_DOMAIN','localhost')}:5050'>"
+                    f"Open Dashboard</a></p>")
         else:
             # Exit code failure — but check if it's a partial/real failure
             if proc.returncode != 0:
@@ -2002,6 +2193,109 @@ Data this quarter:
     return jsonify({"message": msg.strip(), "client": client})
 
 
+
+
+@app.route("/api/cleanup/quarters")
+def get_old_quarters():
+    """
+    List all DISTRIBUTION_Q*_* folders under /mnt/data with size and
+    last-modified date. Flags the currently active quarter (the one
+    DISTRIBUTION_CURRENT points to) as protected - it cannot be deleted
+    from this tool.
+    """
+    current_target = None
+    symlink = DISTRO_BASE / "DISTRIBUTION_CURRENT"
+    if symlink.is_symlink():
+        try:
+            current_target = symlink.resolve().name
+        except Exception:
+            current_target = None
+
+    quarters = []
+    for d in sorted(DISTRO_BASE.glob("DISTRIBUTION_Q*_*")):
+        if not d.is_dir():
+            continue
+        try:
+            r = subprocess.run(["du", "-sh", str(d)],
+                               capture_output=True, text=True, timeout=60)
+            size = r.stdout.split()[0] if r.stdout else "?"
+        except Exception:
+            size = "?"
+        try:
+            mtime = datetime.fromtimestamp(d.stat().st_mtime).strftime("%Y-%m-%d")
+        except Exception:
+            mtime = "?"
+        is_current = (d.name == current_target)
+        quarters.append({
+            "name": d.name,
+            "path": str(d),
+            "size": size,
+            "last_modified": mtime,
+            "is_current": is_current,
+            "protected": is_current,
+        })
+    return jsonify({"quarters": quarters, "current": current_target})
+
+
+@app.route("/api/cleanup/quarters/delete", methods=["POST"])
+def delete_old_quarter():
+    """
+    Delete an old DISTRIBUTION_Q*_* folder entirely. Refuses to delete the
+    quarter that DISTRIBUTION_CURRENT points to, and refuses any path that
+    is not directly under /mnt/data and matching the expected naming
+    pattern, as a safety guard against deleting the wrong thing.
+    """
+    folder_name = request.json.get("folder_name", "")
+    confirm_name = request.json.get("confirm_name", "")
+
+    if not folder_name or not folder_name.startswith("DISTRIBUTION_Q"):
+        return jsonify({"error": "Invalid folder name"}), 400
+    if folder_name != confirm_name:
+        return jsonify({"error": "Confirmation text does not match folder name"}), 400
+
+    target = DISTRO_BASE / folder_name
+    if not target.exists() or not target.is_dir():
+        return jsonify({"error": "Folder not found"}), 404
+    if str(target.resolve()).strip("/") == "" or target.resolve() == DISTRO_BASE.resolve():
+        return jsonify({"error": "Refusing to delete root data folder"}), 400
+
+    symlink = DISTRO_BASE / "DISTRIBUTION_CURRENT"
+    if symlink.is_symlink():
+        try:
+            if symlink.resolve() == target.resolve():
+                return jsonify({"error": "Cannot delete the currently active quarter"}), 400
+        except Exception:
+            pass
+
+    job_id = f"delquarter_{datetime.now().strftime('%H%M%S')}"
+
+    def _delete():
+        running_jobs[job_id] = {"status": "running", "output": [], "started": datetime.now().isoformat()}
+        def log(m): running_jobs[job_id]["output"].append(m)
+        log(f"\u2501\u2501\u2501  Deleting {folder_name}  \u2501\u2501\u2501")
+        try:
+            r = subprocess.run(["du", "-sh", str(target)], capture_output=True, text=True, timeout=60)
+            size = r.stdout.split()[0] if r.stdout else "?"
+            log(f"Size to be freed: {size}")
+        except Exception:
+            pass
+        try:
+            import shutil as _shutil
+            _shutil.rmtree(str(target))
+            log(f"\u2705 Deleted: {target}")
+            try:
+                r = subprocess.run(["df", "-h", "/mnt/data"], capture_output=True, text=True)
+                parts = r.stdout.strip().split("\n")[1].split()
+                log(f"Disk space now: {parts[3]} free ({parts[4]} used)")
+            except Exception:
+                pass
+            running_jobs[job_id]["status"] = "done"
+        except Exception as e:
+            log(f"\u274c Failed to delete: {e}")
+            running_jobs[job_id]["status"] = "error"
+
+    threading.Thread(target=_delete, daemon=True).start()
+    return jsonify({"job_id": job_id})
 
 
 @app.route("/api/cleanup/downloads/<quarter>")
