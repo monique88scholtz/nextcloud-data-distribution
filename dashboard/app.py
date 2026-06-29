@@ -322,7 +322,11 @@ def get_pipeline_status(quarter):
 
     # If running, check which product is actively downloading
     # by looking at the most recently modified log file
-    active_log_families = set()
+    # Track the exact dataset key(s) currently downloading (e.g. "MN_NAM"),
+    # not just the family - otherwise every undownloaded MN_* dataset gets
+    # falsely marked as "Downloading..." whenever ANY MN download is running.
+    active_log_families = set()   # kept for any other code that reads this name
+    active_dataset_keys = set()
     if mapflow_running:
         try:
             import time
@@ -334,19 +338,21 @@ def get_pipeline_status(quarter):
                     stem = log.stem  # e.g. download_MN_EUR_Q2_2026
                     parts = stem.split("_")  # ['download', 'MN', 'EUR', 'Q2', '2026']
                     if len(parts) >= 2:
-                        # Family is everything between 'download' and the quarter (Q#_####)
-                        family_parts = []
+                        # Everything between 'download' and the quarter (Q#_####)
+                        # is the actual dataset key, e.g. ['MN', 'EUR'] -> "MN_EUR"
+                        key_parts = []
                         for p in parts[1:]:
                             if p.startswith("Q") and len(p) <= 3:
                                 break
-                            family_parts.append(p)
-                        if family_parts:
-                            # Add both full family (MNPOI) and first part (MN)
-                            full = family_parts[0]
+                            key_parts.append(p)
+                        if key_parts:
+                            full = key_parts[0]
                             active_log_families.add(full)
-                            # Also add combined e.g. MN for MN_EUR
-                            if len(family_parts) > 1:
-                                active_log_families.add(family_parts[0])
+                            if len(key_parts) > 1:
+                                active_log_families.add(key_parts[0])
+                                active_dataset_keys.add("_".join(key_parts))
+                            else:
+                                active_dataset_keys.add(key_parts[0])
             active_log_family = next(iter(active_log_families), None)
         except:
             pass
@@ -379,14 +385,8 @@ def get_pipeline_status(quarter):
         is_active = (
             mapflow_running
             and not downloaded
-            and (
-                not active_log_families
-                or family in active_log_families
-                or any(f in active_log_families for f in [family, get_prefix(key)])
-            )
+            and key in active_dataset_keys
         )
-        # Simplify: only the matching family shows as active
-        # is_active already set above using active_log_families set
 
         # Check if ingested — requires actual .tar.gz data files in destination
         # Empty folders or folders with only subdirectories do NOT count as ingested
@@ -1544,6 +1544,44 @@ def run_ingest_dataset():
                 return
         except:
             pass
+
+        # Verify the download is actually complete before organising it.
+        # Ingesting a partial download moves broken/incomplete data into the
+        # distribution folder where clients and SFTP partners can reach it.
+        force_ingest = request.json.get("force", False)
+        try:
+            _family = key.split("_")[0]
+            _region = key.replace(f"{_family}_", "")
+            _ver2 = version if _family == "MNR" else version.rsplit(".", 1)[0] + ".000"
+            _pattern_fn = FOLDER_PATTERNS.get(_family)
+            if _pattern_fn:
+                _folder_name = _pattern_fn(_region, _ver2)
+                _full_dl_path = DOWNLOADS / _folder_name
+                if _full_dl_path.exists():
+                    _v = verify_download_against_manifest(_full_dl_path, _folder_name)
+                    if _v.get("verified") and not _v.get("complete"):
+                        _pct = _v["percent_complete"]
+                        _missing_gb = _v["missing_size_gb"]
+                        _missing_n = _v["missing_files_count"]
+                        if not force_ingest:
+                            log(f"\u274c STOPPED: {key} is only {_pct}% downloaded "
+                                f"({_missing_n} file(s) / {_missing_gb}GB still missing)")
+                            log("")
+                            log("This download has NOT finished. Organising it now would put "
+                                "incomplete data into the distribution folder.")
+                            log("Go back to the Pipeline page and click 'Finish downloading' "
+                                "on this dataset first.")
+                            running_jobs[job_id]["status"] = "error"
+                            running_jobs[job_id]["blocked_incomplete"] = True
+                            running_jobs[job_id]["verify"] = _v
+                            return
+                        else:
+                            log(f"\u26a0\ufe0f  WARNING: {key} is only {_pct}% downloaded "
+                                f"({_missing_gb}GB missing) - organising anyway because "
+                                f"force was requested")
+                            log("")
+        except Exception as _ve:
+            log(f"\u26a0\ufe0f  Could not verify download completeness before organising: {_ve}")
 
         # Regenerate .folders.env first
         gen_script = SCRIPTS / "generate_env.py"
