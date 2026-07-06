@@ -364,20 +364,6 @@ def get_pipeline_status(quarter):
         # Use correct version suffix per family — MNR=.003, all others=.000
         _ver = version if family == "MNR" else version.rsplit(".", 1)[0] + ".000"
         downloaded, folder, size, incomplete_count = check_dataset_downloaded(key, family, region, _ver)
-        verify_percent = None
-        verify_missing_gb = None
-        if downloaded and folder:
-            try:
-                full_dl_path = DOWNLOADS / folder
-                v = verify_download_against_manifest(full_dl_path, folder)
-                if v.get("verified"):
-                    verify_percent = v["percent_complete"]
-                    verify_missing_gb = v["missing_size_gb"]
-                    if not v["complete"]:
-                        incomplete_count = max(incomplete_count, v["missing_files_count"])
-            except Exception:
-                pass
-
         # Only mark as actively downloading if:
         # 1. Mapflow is running AND
         # 2. This dataset's family matches the active download AND
@@ -414,7 +400,54 @@ def get_pipeline_status(quarter):
                     ingested = file_count > 0
                 except:
                     pass
-
+        # Skip manifest verify if dataset is already ingested (--move mode
+        # removes source files, leaving an empty/near-empty download folder
+        # that would falsely show as 0% complete against the manifest)
+        _dl_has_data = False
+        if downloaded and folder:
+            try:
+                _p = DOWNLOADS / folder
+                _dl_has_data = (
+                    sum(1 for _ in _p.rglob('*.7z.001')) +
+                    sum(1 for _ in _p.rglob('*.tar.gz'))
+                ) > 10
+            except Exception:
+                pass
+        verify_percent = None
+        verify_missing_gb = None
+        # Only verify if download folder has real data AND distribution dest doesn't
+        # (if already ingested, dist folder is authoritative — skip download check)
+        _dist_has_data = False
+        if distro_exists and distro_path:
+            try:
+                _pref = get_prefix(key)
+                _dreg = key.split('_', 1)[1] if '_' in key else region
+                _dmap = {
+                    'MNR': distro_path / 'MNR' / f'MNR_{_dreg}',
+                    'MN':  distro_path / 'MN' / f'MN_{_dreg}',
+                    'SP':  distro_path / 'PRODUCTS' / 'SPEED_PROFILES' / f'SPEED_PROFILES_{_dreg}',
+                    'POI': distro_path / 'PRODUCTS' / 'MN_PREMIUM_POI' / f'MN_PREMIUM_POI_{_dreg}',
+                    'APT': distro_path / 'PRODUCTS' / 'MN_APT' / f'MN_APT_{_dreg}',
+                }
+                _ddest = _dmap.get(_pref)
+                if _ddest and _ddest.exists():
+                    _dist_has_data = (
+                        sum(1 for _ in _ddest.rglob('*.tar.gz')) +
+                        sum(1 for _ in _ddest.rglob('*.7z.001'))
+                    ) > 0
+            except Exception:
+                pass
+        if _dl_has_data and not _dist_has_data:
+            try:
+                full_dl_path = DOWNLOADS / folder
+                v = verify_download_against_manifest(full_dl_path, folder)
+                if v.get('verified'):
+                    verify_percent = v['percent_complete']
+                    verify_missing_gb = v['missing_size_gb']
+                    if not v['complete']:
+                        incomplete_count = max(incomplete_count, v['missing_files_count'])
+            except Exception:
+                pass
         # Subset datasets share a source with a parent dataset.
         # They don't require a separate download, but they ARE
         # available to ingest once the parent is downloaded.
@@ -2981,6 +3014,46 @@ SFTP_CLIENTS = {
             "SP_ZAF":               "/mnt/data/DISTRIBUTION_CURRENT/PRODUCTS/SPEED_PROFILES/SPEED_PROFILES_ZAF",
         },
     },
+    "autotrak_sftp": {
+        "label": "Autotrak (SFTP)",
+        "host": "196.30.53.61",
+        "port": 22,
+        "user": "mapit",
+        "remote_base": "/uploads",
+        "quarters": "all",
+        "datasets": {
+            "MN_GLOBAL_MEA": "/mnt/data/DISTRIBUTION_CURRENT/MN/MN_MEA",
+            "MN_GLOBAL_EUR": "/mnt/data/DISTRIBUTION_CURRENT/MN/MN_EUR",
+            "MN_GLOBAL_NAM": "/mnt/data/DISTRIBUTION_CURRENT/MN/MN_NAM",
+            "MN_GLOBAL_LAM": "/mnt/data/DISTRIBUTION_CURRENT/MN/MN_LAM",
+            "MN_GLOBAL_SEA": "/mnt/data/DISTRIBUTION_CURRENT/MN/MN_SEA",
+            "MN_GLOBAL_CAS": "/mnt/data/DISTRIBUTION_CURRENT/MN/MN_CAS",
+            "MN_GLOBAL_IND": "/mnt/data/DISTRIBUTION_CURRENT/MN/MN_IND",
+            "MN_GLOBAL_OCE": "/mnt/data/DISTRIBUTION_CURRENT/MN/MN_OCE",
+            "MN_GLOBAL_ISR": "/mnt/data/DISTRIBUTION_CURRENT/MN/MN_ISR",
+            "MN_GLOBAL_S_O": "/mnt/data/DISTRIBUTION_CURRENT/MN/MN_S_O",
+        },
+    },
+    "autotrak_sftp": {
+        "label": "Autotrak (SFTP)",
+        "host": "196.30.53.61",
+        "port": 22,
+        "user": "mapit",
+        "remote_base": "/uploads",
+        "quarters": "all",
+        "datasets": {
+            "MN_GLOBAL_MEA": "/mnt/data/DISTRIBUTION_CURRENT/MN/MN_MEA",
+            "MN_GLOBAL_EUR": "/mnt/data/DISTRIBUTION_CURRENT/MN/MN_EUR",
+            "MN_GLOBAL_NAM": "/mnt/data/DISTRIBUTION_CURRENT/MN/MN_NAM",
+            "MN_GLOBAL_LAM": "/mnt/data/DISTRIBUTION_CURRENT/MN/MN_LAM",
+            "MN_GLOBAL_SEA": "/mnt/data/DISTRIBUTION_CURRENT/MN/MN_SEA",
+            "MN_GLOBAL_CAS": "/mnt/data/DISTRIBUTION_CURRENT/MN/MN_CAS",
+            "MN_GLOBAL_IND": "/mnt/data/DISTRIBUTION_CURRENT/MN/MN_IND",
+            "MN_GLOBAL_OCE": "/mnt/data/DISTRIBUTION_CURRENT/MN/MN_OCE",
+            "MN_GLOBAL_ISR": "/mnt/data/DISTRIBUTION_CURRENT/MN/MN_ISR",
+            "MN_GLOBAL_S_O": "/mnt/data/DISTRIBUTION_CURRENT/MN/MN_S_O",
+        },
+    },
     "riskscape": {
         "label": "Riskscape",
         "host": "sftp.riskscape.pro",
@@ -2995,6 +3068,37 @@ SFTP_CLIENTS = {
         "pull_dest": "/mnt/data/DISTRIBUTION_CURRENT/MAPIT",
     },
 }
+
+LAST_FOLDER_FILE = BASE_DIR / "data" / "last_push_folder.json"
+
+def get_last_folder(client_id):
+    try:
+        if LAST_FOLDER_FILE.exists():
+            data = json.loads(LAST_FOLDER_FILE.read_text())
+            return data.get(client_id, "")
+    except Exception:
+        pass
+    return ""
+
+def save_last_folder(client_id, folder_name):
+    try:
+        LAST_FOLDER_FILE.parent.mkdir(parents=True, exist_ok=True)
+        data = {}
+        if LAST_FOLDER_FILE.exists():
+            try:
+                data = json.loads(LAST_FOLDER_FILE.read_text())
+            except Exception:
+                data = {}
+        data[client_id] = folder_name
+        LAST_FOLDER_FILE.write_text(json.dumps(data, indent=2))
+    except Exception:
+        pass
+
+
+@app.route("/api/sftp/last_folder/<client_id>")
+def api_last_folder(client_id):
+    return jsonify({"folder_name": get_last_folder(client_id)})
+
 
 def _sftp_password(client_id):
     env = load_env()
@@ -3040,14 +3144,17 @@ def _ftp_password(client_id):
 
 @app.route("/api/ftp/status")
 def ftp_status():
+    push_status = load_push_status()
     result = {}
     for cid, cfg in FTP_CLIENTS.items():
         datasets = {}
         for name, local_path in cfg["datasets"].items():
+            push_record = push_status.get(f"{cid}_{name}")
             datasets[name] = {
                 "local_path": local_path,
                 "file_count": _count_files(local_path),
                 "exists": os.path.isdir(local_path),
+                "last_pushed": push_record,
             }
         result[cid] = {
             "label": cfg["label"], "host": cfg["host"], "port": cfg["port"],
@@ -3150,6 +3257,8 @@ LFTP_EOF
 
   if [[ $? -eq 0 ]]; then
     log "   Done: $DATASET"
+    bash /opt/nextcloud-setup/nextcloud-data-distribution/scripts/record_push_status.sh "{client_id}" "$DATASET" "$REMOTE_BASE" "$LOCAL_PATH" 2>>"$LOG" || true
+    bash /opt/nextcloud-setup/nextcloud-data-distribution/scripts/record_push_status.sh "{client_id}" "$DATASET" "$REMOTE_BASE" "$LOCAL_PATH" 2>>"$LOG" || true
   else
     log "   FAILED: $DATASET"
   fi
@@ -3225,16 +3334,30 @@ echo "__DONE__" >> "$LOG"
     return jsonify({"job_id": job_id, "log_file": log_file})
 
 
+def load_push_status():
+    push_status_file = BASE_DIR / "data" / "push_status.json"
+    try:
+        if push_status_file.exists():
+            return json.loads(push_status_file.read_text())
+    except Exception:
+        pass
+    return {}
+
+
+
 @app.route("/api/sftp/status")
 def sftp_status():
+    push_status = load_push_status()
     result = {}
     for cid, cfg in SFTP_CLIENTS.items():
         datasets = {}
         for name, local_path in cfg["datasets"].items():
+            push_record = push_status.get(f"{cid}_{name}")
             datasets[name] = {
                 "local_path": local_path,
                 "file_count": _count_files(local_path),
                 "exists": os.path.isdir(local_path),
+                "last_pushed": push_record,
             }
         result[cid] = {
             "label": cfg["label"],
@@ -3245,6 +3368,91 @@ def sftp_status():
             "has_password": bool(_sftp_password(cid)),
         }
     return jsonify(result)
+
+@app.route("/api/sftp/remote_folders/<client_id>")
+def sftp_remote_folders(client_id):
+    """
+    List folders that exist at the remote base path, so the operator can
+    see what has actually been pushed before, instead of guessing from a
+    local-only Ready/Empty status.
+    """
+    if client_id not in SFTP_CLIENTS:
+        return jsonify({"error": "Unknown client"}), 404
+    cfg = SFTP_CLIENTS[client_id]
+    pw = _sftp_password(client_id)
+    if not pw:
+        return jsonify({"error": f"No password set. Add SFTP_{client_id.upper()}_PASSWORD to config."}), 400
+    try:
+        cmd = [
+            "sshpass", "-p", pw,
+            "ssh", "-o", "StrictHostKeyChecking=no",
+            "-o", "ConnectTimeout=10",
+            "-p", str(cfg["port"]),
+            f"{cfg['user']}@{cfg['host']}",
+            f"ls -1 {cfg['remote_base']} 2>/dev/null"
+        ]
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=20)
+        folders = [f.strip() for f in r.stdout.splitlines() if f.strip()]
+        return jsonify({"folders": sorted(folders, reverse=True)})
+    except subprocess.TimeoutExpired:
+        return jsonify({"error": "Connection timed out"}), 504
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/sftp/verify_push/<client_id>", methods=["POST"])
+def sftp_verify_push(client_id):
+    """
+    Check whether a specific remote folder actually contains the expected
+    datasets, by comparing remote file/subdir counts against local. This
+    gives an honest answer to "has this already been pushed?" instead of
+    only showing local readiness.
+    """
+    if client_id not in SFTP_CLIENTS:
+        return jsonify({"error": "Unknown client"}), 404
+    cfg = SFTP_CLIENTS[client_id]
+    pw = _sftp_password(client_id)
+    folder_name = request.json.get("folder_name", "") if request.is_json else ""
+    if not pw:
+        return jsonify({"error": f"No password set. Add SFTP_{client_id.upper()}_PASSWORD to config."}), 400
+    if not folder_name:
+        return jsonify({"error": "folder_name required"}), 400
+
+    results = {}
+    for name, local_path in cfg["datasets"].items():
+        local_count = _count_files(local_path) if os.path.isdir(local_path) else 0
+        remote_path = f"{cfg['remote_base']}/{folder_name}/{name}"
+        try:
+            cmd = [
+                "sshpass", "-p", pw,
+                "ssh", "-o", "StrictHostKeyChecking=no",
+                "-o", "ConnectTimeout=10",
+                "-p", str(cfg["port"]),
+                f"{cfg['user']}@{cfg['host']}",
+                f"find '{remote_path}' -type f 2>/dev/null | wc -l"
+            ]
+            r = subprocess.run(cmd, capture_output=True, text=True, timeout=20)
+            remote_count = int(r.stdout.strip()) if r.stdout.strip().isdigit() else 0
+        except Exception:
+            remote_count = 0
+
+        if remote_count == 0:
+            status = "not_pushed"
+        elif local_count > 0 and remote_count >= local_count:
+            status = "pushed"
+        elif remote_count > 0 and remote_count < local_count:
+            status = "partially_pushed"
+        else:
+            status = "pushed"
+
+        results[name] = {
+            "local_count": local_count,
+            "remote_count": remote_count,
+            "status": status,
+        }
+
+    return jsonify({"folder_name": folder_name, "datasets": results})
+
 
 @app.route("/api/sftp/test/<client_id>", methods=["POST"])
 def sftp_test(client_id):
@@ -3278,10 +3486,19 @@ def sftp_push(client_id):
     pw   = _sftp_password(client_id)
     data = request.get_json(silent=True) or {}
     folder_name = data.get("folder_name", "")
+    only_datasets = data.get("datasets", None)
     if not pw:
         return jsonify({"error": f"No password set. Add SFTP_{client_id.upper()}_PASSWORD to config."}), 400
     if not folder_name:
         return jsonify({"error": "folder_name required"}), 400
+
+    all_datasets = cfg["datasets"]
+    if only_datasets:
+        selected = {k: v for k, v in all_datasets.items() if k in only_datasets}
+        if not selected:
+            return jsonify({"error": "None of the requested datasets exist for this client"}), 400
+    else:
+        selected = all_datasets
 
     job_id = str(uuid.uuid4())[:8]
     running_jobs[job_id] = {"status": "running", "output": []}
@@ -3290,9 +3507,9 @@ def sftp_push(client_id):
     log_file    = f"/var/log/ddq_sftp_{client_id}_{job_id}.log"
     script_file = f"/tmp/ddq_push_{job_id}.sh"
 
-    # Build dataset list for the script
+    # Build dataset list for the script - only the selected datasets
     dataset_lines = ""
-    for name, local_path in cfg["datasets"].items():
+    for name, local_path in selected.items():
         dataset_lines += f'push_dataset "{name}" "{local_path}"\n'
 
     script = f"""#!/bin/bash
@@ -3370,6 +3587,27 @@ SFTP_EOF
   rm -f "$BATCH_FILE"
   if [[ $RC -eq 0 ]]; then
     log "   ✅ $DATASET done"
+    FILE_COUNT_NOW=$(( SKIP + UPLOAD ))
+    python3 -c "
+import json, os
+from pathlib import Path
+status_file = Path('/opt/nextcloud-setup/nextcloud-data-distribution/data/push_status.json')
+status_file.parent.mkdir(parents=True, exist_ok=True)
+data = {{}}
+if status_file.exists():
+    try:
+        data = json.loads(status_file.read_text())
+    except Exception:
+        data = {{}}
+data['{client_id}_$DATASET'] = {{
+    'client_id': '{client_id}',
+    'dataset': '$DATASET',
+    'folder_name': '$REMOTE_BASE'.split('/')[-1],
+    'pushed_at': '$(date -Iseconds)',
+    'file_count': $FILE_COUNT_NOW,
+}}
+status_file.write_text(json.dumps(data, indent=2))
+" 2>>"$LOG"
   else
     log "   ❌ $DATASET failed (exit $RC)"
   fi

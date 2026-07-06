@@ -1975,10 +1975,13 @@ function renderSftp() {
       + '<span style="font-size:11px;padding:3px 10px;border-radius:20px;background:'+(pwOk?'#e8f5e9':'#fff3e0')+';color:'+(pwOk?'#2e7d32':'#e65100')+'">'+(pwOk?'🔑 Password set':'⚠️ No password')+'</span>'
       + '<button class="btn" onclick="testSftp(&quot;'+cid+'&quot;,this)"><i class="ti ti-plug"></i> Test connection</button>'
       + (cid === 'riskscape' ? '<button class="btn" onclick="pullSftp(&quot;'+cid+'&quot;)"><i class="ti ti-cloud-download"></i> Pull MapIT</button>' : '')
-      + '<button class="btn btn-primary" onclick="openPushModal(&quot;'+cid+'&quot;)" '+(pwOk?'':'disabled')+'><i class="ti ti-cloud-upload"></i> Push data</button>'
+      + '<button class="btn" onclick="selectAllSftp(&quot;'+cid+'&quot;,true)">Select all</button>'
+      + '<button class="btn" onclick="selectAllSftp(&quot;'+cid+'&quot;,false)">Select none</button>'
+      + '<button class="btn btn-primary" onclick="openPushModal(&quot;'+cid+'&quot;)" '+(pwOk?'':'disabled')+'><i class="ti ti-cloud-upload"></i> Push selected</button>'
       + '</div></div>'
       + '<table style="width:100%;border-collapse:collapse;font-size:13px">'
       + '<thead><tr style="border-bottom:1px solid #e8e8e4">'
+      + '<th style="text-align:center;padding:6px 8px;width:30px"></th>'
       + '<th style="text-align:left;padding:6px 8px;color:#888;font-weight:500">Dataset</th>'
       + '<th style="text-align:left;padding:6px 8px;color:#888;font-weight:500">Local path</th>'
       + '<th style="text-align:right;padding:6px 8px;color:#888;font-weight:500">Files</th>'
@@ -1986,11 +1989,29 @@ function renderSftp() {
       + '</tr></thead><tbody>';
     for (const [name, d] of Object.entries(cfg.datasets)) {
       const ready = d.exists && d.file_count > 0;
+      let statusBadge;
+      if (d.last_pushed) {
+        const pushDate = new Date(d.last_pushed.pushed_at);
+        const dateStr = pushDate.toLocaleDateString('en-ZA', {day:'numeric', month:'short'}) + ' ' + pushDate.toLocaleTimeString('en-ZA', {hour:'2-digit', minute:'2-digit'});
+        const sameCount = d.last_pushed.file_count === d.file_count;
+        const badgeColor = sameCount ? '#2e7d32' : '#e65100';
+        const badgeBg = sameCount ? '#e8f5e9' : '#fff3e0';
+        const icon = sameCount ? '✅' : '⚠️';
+        const label = sameCount ? 'Pushed' : 'Pushed (file count changed since)';
+        statusBadge = '<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:'+badgeBg+';color:'+badgeColor+'" title="Pushed to '+d.last_pushed.folder_name+' on '+dateStr+' ('+d.last_pushed.file_count+' files)">'+icon+' '+label+' '+dateStr+'</span>';
+      } else if (ready) {
+        statusBadge = '<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:#e6f1fb;color:#185fa5">📦 Ready to push</span>';
+      } else {
+        statusBadge = '<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:#ffebee;color:#c62828">❌ Empty</span>';
+      }
       html += '<tr style="border-bottom:1px solid #f0f0ec">'
+        + '<td style="padding:7px 8px;text-align:center">'
+        + '<input type="checkbox" class="sftp-ds-check" data-cid="'+cid+'" data-name="'+name+'" '+(ready?'checked':'disabled')+'>'
+        + '</td>'
         + '<td style="padding:7px 8px;font-weight:600">'+name+'</td>'
         + '<td style="padding:7px 8px;color:#888;font-size:11px;font-family:monospace">'+d.local_path+'</td>'
         + '<td style="padding:7px 8px;text-align:right">'+d.file_count.toLocaleString()+'</td>'
-        + '<td style="padding:7px 8px;text-align:center"><span style="font-size:11px;padding:2px 8px;border-radius:20px;background:'+(ready?'#e8f5e9':'#ffebee')+';color:'+(ready?'#2e7d32':'#c62828')+'">'+(ready?'✅ Ready':'❌ Empty')+'</span></td>'
+        + '<td style="padding:7px 8px;text-align:center">'+statusBadge+'</td>'
         + '</tr>';
     }
     html += '</tbody></table>'
@@ -1999,6 +2020,20 @@ function renderSftp() {
   }
   if (!html) html = '<p style="color:#888">No SFTP clients configured.</p>';
   document.getElementById('sftp-content').innerHTML = html;
+}
+
+function selectAllSftp(cid, checked){
+  document.querySelectorAll('.sftp-ds-check[data-cid="'+cid+'"]').forEach(cb => {
+    if (!cb.disabled) cb.checked = checked;
+  });
+}
+
+function getSelectedSftpDatasets(cid){
+  const checked = [];
+  document.querySelectorAll('.sftp-ds-check[data-cid="'+cid+'"]:checked').forEach(cb => {
+    checked.push(cb.dataset.name);
+  });
+  return checked;
 }
 
 var ftpData = {};
@@ -2059,11 +2094,26 @@ function renderFtp() {
       + '</tr></thead><tbody>';
     for (const [name, d] of Object.entries(cfg.datasets)) {
       const ready = d.exists && d.file_count > 0;
+      let statusBadge;
+      if (d.last_pushed) {
+        const pushDate = new Date(d.last_pushed.pushed_at);
+        const dateStr = pushDate.toLocaleDateString('en-ZA', {day:'numeric', month:'short'}) + ' ' + pushDate.toLocaleTimeString('en-ZA', {hour:'2-digit', minute:'2-digit'});
+        const sameCount = d.last_pushed.file_count === d.file_count;
+        const badgeColor = sameCount ? '#2e7d32' : '#e65100';
+        const badgeBg = sameCount ? '#e8f5e9' : '#fff3e0';
+        const icon = sameCount ? '✅' : '⚠️';
+        const label = sameCount ? 'Pushed' : 'Pushed (file count changed since)';
+        statusBadge = '<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:'+badgeBg+';color:'+badgeColor+'" title="Pushed to '+d.last_pushed.folder_name+' on '+dateStr+' ('+d.last_pushed.file_count+' files)">'+icon+' '+label+' '+dateStr+'</span>';
+      } else if (ready) {
+        statusBadge = '<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:#e6f1fb;color:#185fa5">📦 Ready to push</span>';
+      } else {
+        statusBadge = '<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:#ffebee;color:#c62828">❌ Empty</span>';
+      }
       html += '<tr style="border-bottom:1px solid #f0f0ec">'
         + '<td style="padding:7px 8px;font-weight:600">'+name+'</td>'
         + '<td style="padding:7px 8px;color:#888;font-size:11px;font-family:monospace">'+d.local_path+'</td>'
         + '<td style="padding:7px 8px;text-align:right">'+d.file_count.toLocaleString()+'</td>'
-        + '<td style="padding:7px 8px;text-align:center"><span style="font-size:11px;padding:2px 8px;border-radius:20px;background:'+(ready?'#e8f5e9':'#ffebee')+';color:'+(ready?'#2e7d32':'#c62828')+'">'+(ready?'✅ Ready':'❌ Empty')+'</span></td>'
+        + '<td style="padding:7px 8px;text-align:center">'+statusBadge+'</td>'
         + '</tr>';
     }
     html += '</tbody></table>'
@@ -2174,24 +2224,32 @@ function clearSftpJob(cid) {
 function openPushModal(cid) {
   const cfg = sftpData[cid];
   if (!cfg) return;
+  const selectedDatasets = getSelectedSftpDatasets(cid);
+  if (selectedDatasets.length === 0) {
+    toast('Select at least one dataset to push (use the checkboxes in the table)', 'warn', 6000);
+    return;
+  }
   const qsel = document.getElementById('pipe-quarter');
   const quarter = qsel ? qsel.value : '';
   const qMap = {'Q1_2026':'202603003','Q2_2026':'202606003','Q3_2026':'202609003','Q4_2026':'202612003',
                  'Q1_2027':'202703003','Q2_2027':'202706003','Q3_2027':'202709003','Q4_2027':'202712003'};
   const qCode = qMap[quarter] || '';
   const suggested = quarter ? 'Q'+quarter.replace('_','')+'_'+qCode : '';
-  const folderName = prompt('Enter the remote folder name:\n(e.g. Q2_202606003)', suggested);
+  const label = selectedDatasets.length === 1 ? selectedDatasets[0] : selectedDatasets.length+' datasets';
+  const folderName = prompt('Push '+label+' to remote folder:\n(e.g. Q2_202606003)', suggested);
   if (!folderName) return;
-  startSftpPush(cid, folderName);
+  startSftpPush(cid, folderName, selectedDatasets);
 }
 
-async function startSftpPush(cid, folderName) {
+async function startSftpPush(cid, folderName, datasets) {
   const t = document.getElementById('sftp-t-'+cid);
   if (!t) return;
   t.style.display='block';
   t.innerHTML='<span class="spinner"></span> Starting push…';
   try {
-    const d = await post('/api/sftp/push/'+cid, {folder_name: folderName});
+    const payload = {folder_name: folderName};
+    if (datasets && datasets.length) payload.datasets = datasets;
+    const d = await post('/api/sftp/push/'+cid, payload);
     if (d.error) { t.innerHTML='❌ '+d.error; return; }
     saveSftpJob(cid, d.job_id);
     t.innerHTML='';
@@ -2199,6 +2257,7 @@ async function startSftpPush(cid, folderName) {
     clearSftpJob(cid);
     if (result.status === 'done') {
       toast('✅ SFTP push to '+cid+' complete!', 'success', 15000);
+      loadSftpStatus();
     } else {
       toast('❌ SFTP push to '+cid+' failed — check terminal', 'error', 10000);
     }
