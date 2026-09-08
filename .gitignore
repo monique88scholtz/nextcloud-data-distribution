@@ -30,7 +30,7 @@ Thumbs.db
 data/client_distribution.csv
 data/client_distribution.csv.bak
 data/notifications.json
-quarterly/*.yaml
+quarterly/*.yaml.bak-*
 backups/
 logs/
 nextcloud-agent-system-v*.zip
@@ -41,3 +41,11 @@ dashboard/*.pyc
 data/
 logs/
 nextcloud-agent-system/quarterly/
+
+# Client credentials — never commit (contains plaintext passwords)
+data/client_distribution.csv
+
+# Auto-generated / runtime
+.folders.env
+logs/
+*.bak-*

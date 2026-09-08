@@ -33,7 +33,7 @@ DATA_SUFFIX = {
     "MN":    lambda r: "data",           # MN files are flat in data/ not data/mea/
     "MNSP":  lambda r: "data",           # MNSP files are flat in data/ not data/mea/
     "MNPOI": lambda r: "data",           # MNPOI files are flat in data/ not data/mea/
-    "MNAP":  lambda r: f"data/{r.lower()}",
+    "MNAP":  lambda r: "data",
     "MAPIT": lambda r: r,
 }
 

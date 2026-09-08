@@ -240,26 +240,43 @@ process_mnr() {
 
     run mkdir -p "$dest_base" "$docs_dest"
 
-    # ── Region-level documentation files ──────────────────────
-    # These sit at src_base/ level (e.g. data/mea/model.tar.gz)
-    # Copy each to MNR_DOCUMENTATION_{region}/
+# ── Region-level documentation files ──────────────────────
+    # FIX (2026-09): TomTom ships MNR region docs NOT under the region data
+    # dir (src_base = <root>/data/mea) but scattered one and two levels up:
+    #   <root>/data/model.tar.gz
+    #   <root>/documentation/documentation.tar.gz , version.csv
+    #   <root>/tools/psp_library.tar.gz , loader.tar.gz
+    # The old code only looked in "$src_base/" and "$src_base/documentation",
+    # which never matched, so every MNR_DOCUMENTATION_* folder stayed empty.
+    # Derive the data dir and download root from src_base and search each
+    # candidate location for every known doc file.
+    local _data_dir _dl_root
+    _data_dir="$(dirname "$src_base")"     # <root>/data
+    _dl_root="$(dirname "$_data_dir")"     # <root>
     log "  📄 Checking for region documentation files..."
     for _doc_file in $REGION_DOC_FILES; do
-        local _doc_src="$src_base/$_doc_file"
-        if [[ -f "$_doc_src" ]]; then
+        local _doc_found=""
+        for _cand in \
+            "$src_base/$_doc_file" \
+            "$_data_dir/$_doc_file" \
+            "$_dl_root/$_doc_file" \
+            "$_dl_root/documentation/$_doc_file" \
+            "$_dl_root/tools/$_doc_file"; do
+            if [[ -f "$_cand" ]]; then _doc_found="$_cand"; break; fi
+        done
+        if [[ -n "$_doc_found" ]]; then
             log "  📋 Copying $_doc_file → $(basename "$docs_dest")/"
-            copy_file "$_doc_src" "$docs_dest/$_doc_file"
+            copy_file "$_doc_found" "$docs_dest/$_doc_file"
         fi
     done
-
-    # Also check for documentation/ and tools/ subfolders
-    for _dir_src in "$src_base/documentation" "$src_base/tools"; do
+    # Also copy the documentation/ and tools/ folders wholesale from the
+    # download root (captures anything shipped there beyond the named files).
+    for _dir_src in "$_dl_root/documentation" "$_dl_root/tools"; do
         if [[ -d "$_dir_src" ]]; then
             log "  📁 Copying $(basename "$_dir_src")/ folder → $docs_dest/"
             run rsync -a --no-perms --no-owner --no-group "$_dir_src/" "$docs_dest/$(basename "$_dir_src")/"
         fi
     done
-
     # ── Discover country folders ───────────────────────────────
     mapfile -t all_countries < <(
         find "$src_base" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' \

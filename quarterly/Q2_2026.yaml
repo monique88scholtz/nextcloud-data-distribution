@@ -1,0 +1,160 @@
+clients:
+  3D_Tracking:
+    datasets:
+    - MN_MEA
+    - POI_MEA
+    username: 3d_tracking
+  Altrack:
+    datasets:
+    - MNR_SOUTHERN_AFRICA
+    - POI_MEA
+    username: altrack
+  Autotrak:
+    datasets:
+    - MN_MEA
+    - MN_EUR
+    - CUSTOM_MN_GLOBAL
+    username: autotrak
+  Cellstop:
+    datasets:
+    - MNR_MEA
+    - POI_MEA
+    username: cellstop
+  DPME:
+    datasets:
+    - MNR_MEA
+    username: dpme
+  Esri:
+    datasets:
+    - MNR_MEA
+    - MNR_EUR
+    - MN_MEA
+    - POI_MEA
+    - SP_MEA
+    username: esri
+  Knowledge_Factory:
+    datasets:
+    - MNR_ZAF
+    username: knowledge_factory
+  Lightstone:
+    datasets:
+    - MNR_ZAF
+    username: lightstone
+  Prosource:
+    datasets:
+    - MNR_ZAF
+    - POI_MEA
+    username: prosource
+  Sysman:
+    datasets:
+    - MNR_SOUTHERN_AFRICA
+    - POI_MEA
+    username: sysman
+  Trackmatic:
+    datasets:
+    - MNR_SOUTHERN_AFRICA
+    - POI_MEA
+    username: trackmatic
+  VSC_Solutions:
+    datasets:
+    - MNR_MEA
+    - MNR_EUR
+    - SP_MEA
+    - SP_EUR
+    username: vsc_solutions
+datasets:
+  APT_MEA:
+    family: MNAP
+    region: MEA
+    zones: ~ALL
+  MNR_EUR:
+    family: MNR
+    mnr_data:
+    - ALL
+    region: EUR
+    zones: ~ALL
+  MNR_MEA:
+    family: MNR
+    mnr_data:
+    - ALL
+    region: MEA
+    zones: ~ALL
+  MNR_SOUTHERN_AFRICA:
+    family: MNR
+    mnr_data:
+    - ALL
+    region: MEA
+    zones:
+    - AGO
+    - BWA
+    - LSO
+    - MOZ
+    - MWI
+    - NAM
+    - SWZ
+    - ZAF
+    - ZMB
+    - ZWE
+  MNR_ZAF:
+    family: MNR
+    mnr_data:
+    - ALL
+    region: MEA
+    zones:
+    - ZAF
+  MN_CAS:
+    family: MN
+    region: CAS
+    zones: ~ALL
+  MN_EUR:
+    family: MN
+    region: EUR
+    zones: ~ALL
+  MN_IND:
+    family: MN
+    region: IND
+    zones: ~ALL
+  MN_ISR:
+    family: MN
+    region: ISR
+    zones: ~ALL
+  MN_LAM:
+    family: MN
+    region: LAM
+    zones: ~ALL
+  MN_MEA:
+    family: MN
+    region: MEA
+    zones: ~ALL
+  MN_NAM:
+    family: MN
+    region: NAM
+    zones: ~ALL
+  MN_OCE:
+    family: MN
+    region: OCE
+    zones: ~ALL
+  MN_SEA:
+    family: MN
+    region: SEA
+    zones: ~ALL
+  MN_S_O:
+    family: MN
+    region: S_O
+    zones: ~ALL
+  POI_MEA:
+    family: MNPOI
+    region: MEA
+    zones: ~ALL
+  SP_EUR:
+    family: MNSP
+    region: EUR
+    zones: ~ALL
+  SP_MEA:
+    family: MNSP
+    region: MEA
+    zones: ~ALL
+distro_folder: /mnt/data/DISTRIBUTION_Q2_2026
+downloads_folder: /mnt/data/downloads/downloads/downloads
+quarter: Q2_2026
+tomtom_version: 2026.06.003
