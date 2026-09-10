@@ -177,6 +177,11 @@ datasets:
     family: MNSP
     region: MEA
     zones: ~ALL
+  SP_ZAF:
+    family: MNSP
+    region: MEA
+    zones:
+    - ZAF
 distro_folder: /mnt/data/DISTRIBUTION_Q3_2026
 downloads_folder: /mnt/data/downloads/downloads/downloads
 quarter: Q3_2026
