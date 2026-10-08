@@ -20,6 +20,10 @@ clients:
     - MNR_MEA
     - POI_MEA
     username: cellstop
+  Ctrack:
+    datasets:
+    - CUSTOM_SAMPLE
+    username: ctrack
   DPME:
     datasets:
     - MNR_MEA
@@ -49,6 +53,12 @@ clients:
     - MNR_ZAF
     - POI_MEA
     username: prosource
+  Scope Telematics:
+    datasets:
+    - SP_MEA
+    - SP_EUR
+    - CUSTOM_MN_GLOBAL
+    username: scope_telematics
   Sysman:
     datasets:
     - MNR_SOUTHERN_AFRICA
@@ -99,6 +109,24 @@ datasets:
     - ZAF
     - ZMB
     - ZWE
+  MNR_TRACKMATIC:
+    family: MNR
+    region: MEA
+    zones:
+    - AGO
+    - BWA
+    - LSO
+    - MOZ
+    - MWI
+    - NAM
+    - SWZ
+    - ZAF
+    - ZMB
+    - ZWE
+    - ARE
+    - TZA
+    - KEN
+    - COD
   MNR_ZAF:
     family: MNR
     mnr_data:
@@ -146,9 +174,41 @@ datasets:
     family: MN
     region: S_O
     zones: ~ALL
+  POI_CAS:
+    family: MNPOI
+    region: CAS
+    zones: ~ALL
+  POI_EUR:
+    family: MNPOI
+    region: EUR
+    zones: ~ALL
+  POI_IND:
+    family: MNPOI
+    region: IND
+    zones: ~ALL
+  POI_ISR:
+    family: MNPOI
+    region: ISR
+    zones: ~ALL
+  POI_LAM:
+    family: MNPOI
+    region: LAM
+    zones: ~ALL
   POI_MEA:
     family: MNPOI
     region: MEA
+    zones: ~ALL
+  POI_NAM:
+    family: MNPOI
+    region: NAM
+    zones: ~ALL
+  POI_OCE:
+    family: MNPOI
+    region: OCE
+    zones: ~ALL
+  POI_SEA:
+    family: MNPOI
+    region: SEA
     zones: ~ALL
   POI_SOUTHERN_AFRICA:
     family: MNPOI
