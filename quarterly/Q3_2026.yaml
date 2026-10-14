@@ -53,6 +53,10 @@ clients:
     - MNR_ZAF
     - POI_MEA
     username: prosource
+  RTT:
+    datasets:
+    - MNR_ZAF
+    username: rtt
   Scope Telematics:
     datasets:
     - SP_MEA
